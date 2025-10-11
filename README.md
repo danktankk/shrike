@@ -13,7 +13,7 @@ Have you ever found yourself watching upcoming latest AAA game title videos and 
 
 **DiscoProwl** is a lightweight Python-powered search assistant for [Prowlarr](https://github.com/Prowlarr/Prowlarr) that was created for a specific need I have.  There is no WebUI for this project currently and doesnt really need one.  Just start the container and then wait for notificaitons after testing with a known release.  It periodically searches your configured indexers for game titles (or anything really) you want, filters out irrelevant junk that you define (Ex: console releases, macOS, old uploads, etc), and notifies you when results match your query.  This is useful when you are waiting on a game to drop and want to get it as soon as possible!  You will be notified and then you decide how to proceed.  In future releases then will be more streamlined.
 
-💬 **Notifications** are delivered with choice of the following for the moment:
+ **Notifications** are delivered with choice of the following for the moment:
 - Discord webhook (rich embed)
 - [Apprise](https://github.com/caronc/apprise) services
 - Pushover (mobile push)
@@ -35,7 +35,7 @@ It can even pull **box art from SteamGridDB** if you provide an API key — opti
 
 ---
 
-## 🔔 Notification Options
+##  Notification Options
 
 **You must configure at least one of these:**
 
@@ -62,17 +62,17 @@ It can even pull **box art from SteamGridDB** if you provide an API key — opti
 1. Reads your search keywords from `SEARCH_ITEMS`
 2. Queries Prowlarr's `/api` endpoint
 3. Filters results using:
-   - ✅ Category: must include `games` or `pc`
-   - ✅ Filename must include the **full search term** as a whole word
-   - ❌ Disallowed terms like `ps5`, `macos`, etc.
-   - ⏳ Age must be below `MAX_AGE_DAYS`
+   -  Category: must include `games` or `pc`
+   -  Filename must include the **full search term** as a whole word
+   -  Disallowed terms like `ps5`, `macos`, etc.
+   -  Age must be below `MAX_AGE_DAYS`
 4. Sends notifications through all enabled channels
 5. Includes box art from SteamGridDB (if enabled)
 6. Sleeps for `INTERVAL_HOURS`, then repeats
 
 ---
 
-## 🐳 Docker Compose Example
+##  Docker Compose Example
 
 ```yaml
 services:
@@ -111,7 +111,7 @@ SEARCH_ITEMS	Comma-separated search terms
 INTERVAL_HOURS	(Default: 12) Time between search runs
 MAX_RESULTS	(Default: 3) Max results per search term
 MAX_AGE_DAYS	(Default: 30) Ignore older torrents
-🔔 Notification Options
+  Notification Options
 You must set at least one of these:
 
 ## Variable	Description
