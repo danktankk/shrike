@@ -2,8 +2,7 @@
 use chrono::{DateTime, Utc};
 
 /// Returns true if `query` appears as a whole-word match (case-insensitive) in `title`.
-/// A word boundary is defined as: position is at start/end of string, or
-/// the adjacent character is not alphanumeric and not underscore.
+/// A word boundary is a position where the adjacent character is not alphanumeric or underscore.
 pub fn whole_word_match(query: &str, title: &str) -> bool {
     let title_lower = title.to_lowercase();
     let query_lower = query.to_lowercase();
@@ -12,27 +11,27 @@ pub fn whole_word_match(query: &str, title: &str) -> bool {
         return false;
     }
 
-    let title_bytes = title_lower.as_bytes();
-    let query_bytes = query_lower.as_bytes();
-    let qlen = query_bytes.len();
-    let tlen = title_bytes.len();
+    let mut start = 0;
+    while let Some(pos) = title_lower[start..].find(query_lower.as_str()) {
+        let abs_pos = start + pos;
+        let end = abs_pos + query_lower.len();
 
-    if qlen > tlen {
-        return false;
-    }
+        let left_ok = title_lower[..abs_pos]
+            .chars()
+            .next_back()
+            .map_or(true, |c| !is_word_char(c));
 
-    let mut i = 0;
-    while i <= tlen - qlen {
-        if title_bytes[i..i + qlen] == *query_bytes {
-            // Check left boundary
-            let left_ok = i == 0 || !is_word_char(title_bytes[i - 1] as char);
-            // Check right boundary
-            let right_ok = i + qlen >= tlen || !is_word_char(title_bytes[i + qlen] as char);
-            if left_ok && right_ok {
-                return true;
-            }
+        let right_ok = title_lower[end..]
+            .chars()
+            .next()
+            .map_or(true, |c| !is_word_char(c));
+
+        if left_ok && right_ok {
+            return true;
         }
-        i += 1;
+
+        // Advance past this match position (advance by at least 1 byte)
+        start = abs_pos + 1;
     }
     false
 }
@@ -58,5 +57,5 @@ pub fn keywords_ok(title: &str, disallowed: &[String]) -> bool {
         return true;
     }
     let lower = title.to_lowercase();
-    !disallowed.iter().any(|kw| lower.contains(kw.as_str()))
+    !disallowed.iter().any(|kw| lower.contains(kw.to_lowercase().as_str()))
 }
