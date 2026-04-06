@@ -1,6 +1,6 @@
 services:
   discoprowl:
-    image: danktankk/discoprowl:latest
+    image: ghcr.io/danktankk/discoprowl:latest
     build: .
     ports:
       - "3079:3079"
