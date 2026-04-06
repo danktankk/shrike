@@ -46,7 +46,7 @@ Single Rust binary. One Docker container on host (192.0.2.10).
 
 **Frontend:** Svelte + Vite, compiled and embedded in the binary via `rust-embed`. No separate build container at runtime — assets baked in at compile time.
 
-**No auth** — internal network only, same pattern as all other tools on host.
+**Auth:** Not in v1 — internal network only, same pattern as all other tools on host. Auth layer is planned for a future pass; the API and session model should be designed to accommodate it without a full rewrite (e.g., Axum middleware layer).
 
 ---
 
@@ -233,9 +233,9 @@ Port `3079` — adjacent to DiscoRelay at `3080`, keeps the Discord tooling port
 
 ---
 
-## Out of Scope
+## Out of Scope (v1)
 
-- Authentication / multi-user support
+- Authentication / multi-user support — planned for future pass, architecture must not preclude it
 - Mobile app
 - Auto-download integration (no grab/snatch — notify only)
 - Feed management UI (feeds managed directly in CommaFeed)
