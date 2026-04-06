@@ -31,19 +31,26 @@ pub async fn send(
         FALLBACK_IMAGE.to_string()
     };
 
-    let img_bytes = http.get(&image_url).send().await?.bytes().await?;
+    // Fetch image bytes — if this fails, send without attachment
+    let img_bytes = match http.get(&image_url).send().await {
+        Ok(resp) => resp.bytes().await.ok(),
+        Err(_) => None,
+    };
 
-    let form = reqwest::multipart::Form::new()
+    let mut form = reqwest::multipart::Form::new()
         .text("token", app_token.to_string())
         .text("user", user_key.to_string())
         .text("title", format!("DiscoProwl: {}", term.name))
-        .text("message", message)
-        .part(
+        .text("message", message);
+
+    if let Some(img) = img_bytes {
+        form = form.part(
             "attachment",
-            reqwest::multipart::Part::bytes(img_bytes.to_vec())
+            reqwest::multipart::Part::bytes(img.to_vec())
                 .file_name("cover.jpg")
                 .mime_str("image/jpeg")?,
         );
+    }
 
     let resp = http
         .post("https://api.pushover.net/1/messages.json")

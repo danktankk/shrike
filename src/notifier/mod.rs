@@ -46,9 +46,10 @@ impl Notifier {
             }
         }
 
-        if self.config.pushover_app_token.is_some() && self.config.pushover_user_key.is_some() {
-            let token = self.config.pushover_app_token.as_deref().unwrap();
-            let key = self.config.pushover_user_key.as_deref().unwrap();
+        if let (Some(token), Some(key)) = (
+            self.config.pushover_app_token.as_deref(),
+            self.config.pushover_user_key.as_deref(),
+        ) {
             match pushover::send(
                 &self.http, token, key, term, item,
                 self.config.steamgriddb_api_key.as_deref(),
