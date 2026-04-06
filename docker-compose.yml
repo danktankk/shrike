@@ -1,26 +1,27 @@
+services:
+  discoprowl:
+    image: danktankk/discoprowl:latest
+    build: .
+    ports:
+      - "3079:3079"
+    volumes:
+      - ./data:/data
+    environment:
+      DATABASE_URL: /data/discoprowl.db
+      BIND_ADDR: 0.0.0.0:3079
+      COMMAFEED_URL: http://192.168.160.155:8882
+      COMMAFEED_USER: CC
+      COMMAFEED_PASS: ${COMMAFEED_PASS}
+      DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL}
+      APPRISE_URL: ${APPRISE_URL:-}
+      PUSHOVER_APP_TOKEN: ${PUSHOVER_APP_TOKEN:-}
+      PUSHOVER_USER_KEY: ${PUSHOVER_USER_KEY:-}
+      STEAMGRIDDB_API_KEY: ${STEAMGRIDDB_API_KEY:-}
+      RUST_LOG: info
+    restart: unless-stopped
+    networks:
+      - proxy
+
 networks:
   proxy:
     external: true
-
-services:
-  discoprowl:
-    image: danktankk/discoprowl:latest  ## ---[ will pull appropriate platform (currently supports arm64v8, amd64) ]--- ##
-    networks:
-      - proxy
-    environment:
-      PROWLARR_URL: ${PROWLARR_URL}    ## ---[ only 'sub.domain.com required' 'https://' prepended automatically ]--- ##
-      API_KEY: ${API_KEY}
-      SEARCH_ITEMS: "pga tour 2K25,monster hunter wilds"   ## ---[ comma delimiter, no spaces ]--- ## 
-      MAX_AGE_DAYS: ""        ## ---[ defaults to 30 days ]--- ##
-      INTERVAL_HOURS: ""      ## ---[ defaults to 12 hours ]--- ##
-      MAX_RESULTS: ""         ## ---[ defaults to 3 ]--- ##
-      DISALLOWED_KEYWORDS: "ps4,ps5"
-      DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL}
-      STEAMGRIDDB_API_KEY: ${STEAMGRIDDB_API}     ## ---[ optional ]--- ##
-      ## Provide only one of the following notification configurations:
-      ## DISCORD_WEBHOOK_URL: "https://discord.com/api/webhooks/yourhook"
-      ## APPRISE_URL: "apprise://yourappriseurl"
-      ## PUSHOVER_APP_TOKEN: "yourpushoverapptoken"
-      ## PUSHOVER_USER_KEY: "yourpushoveruserkey"
-      ## PUSHOVER_METHOD: "apprise"  ## leave commented if not using appraise for pushover
-    restart: unless-stopped

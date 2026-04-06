@@ -1,29 +1,32 @@
-##<--########################################################
-##               DiscoProwl - danktankk                    ##
-########################################################-->##
-FROM python:3.10-alpine
+# ── Stage 1: Frontend build ─────────────────────────────────────────────────
+FROM node:20-alpine AS frontend-build
+WORKDIR /app/frontend
+COPY frontend/package*.json ./
+RUN npm ci
+COPY frontend/ ./
+RUN npm run build
 
-## ------[ Update apk repo & install common utils ]------  ##
-RUN apk update && apk add --no-cache \
-    bash \
-    curl \
-    vim \
-    nano \
-    git \
-    wget \
-    net-tools
+# ── Stage 2: Rust build ──────────────────────────────────────────────────────
+FROM rust:1.77-slim-bookworm AS rust-build
+RUN apt-get update && apt-get install -y pkg-config libssl-dev && rm -rf /var/lib/apt/lists/*
 
-## --------------------[ enable logs ]-------------------- ##
-ENV PYTHONUNBUFFERED=1
-
-## ---------------------[ location ]---------------------- ##
 WORKDIR /app
+COPY Cargo.toml Cargo.lock ./
+COPY src/ ./src/
+COPY migrations/ ./migrations/
+COPY --from=frontend-build /app/frontend/dist ./frontend/dist/
 
-## -----------------[ add python script ]----------------- ##
-COPY discoprowl.py .
+# Stub build.rs so cargo doesn't try to run npm again
+RUN echo 'fn main() {}' > build.rs
 
-## -----[ Install required Python modules using pip ]----- ##
-RUN pip install requests apprise
+RUN cargo build --release
 
-## --------------------[ run script ]--------------------- ##
-CMD ["python3", "discoprowl.py"]
+# ── Stage 3: Runtime ─────────────────────────────────────────────────────────
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY --from=rust-build /app/target/release/discoprowl ./discoprowl
+
+EXPOSE 3079
+CMD ["./discoprowl"]
