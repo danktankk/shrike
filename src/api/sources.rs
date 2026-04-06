@@ -79,7 +79,7 @@ pub async fn test_source(State(state): State<AppState>, Path(id): Path<i64>) -> 
     let test_term = crate::models::SearchTerm {
         id: 0,
         name: "test".into(),
-        query: "test".into(),
+        query: String::new(),
         enabled: true,
         max_age_days: Some(30),
         disallowed_keywords: None,
