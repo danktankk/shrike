@@ -24,10 +24,10 @@ pub async fn list(
 
     let result = sqlx::query_as::<_, Match>(
         "SELECT * FROM matches
-         WHERE (?1 IS NULL OR search_term_id=?1)
-           AND (?2 IS NULL OR source_id=?2)
+         WHERE (search_term_id = COALESCE(?, search_term_id))
+           AND (source_id      = COALESCE(?, source_id))
          ORDER BY matched_at DESC
-         LIMIT ?3"
+         LIMIT ?"
     )
     .bind(filter.search_term_id)
     .bind(filter.source_id)

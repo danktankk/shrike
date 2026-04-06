@@ -47,7 +47,7 @@ pub async fn test_channel(
         pub_date: Some(chrono::Utc::now()),
         description: Some("This is a test notification from DiscoProwl.".into()),
         indexer: Some("test".into()),
-        seeders: Some(42),
+        seeders: Some(42u32),
     };
 
     let result = match channel.as_str() {
@@ -82,5 +82,6 @@ pub async fn test_channel(
 }
 
 fn mask_url(url: &str) -> String {
-    if url.len() > 20 { format!("{}***", &url[..20]) } else { url.to_string() }
+    let prefix: String = url.chars().take(20).collect();
+    if url.chars().count() > 20 { format!("{}***", prefix) } else { url.to_string() }
 }
