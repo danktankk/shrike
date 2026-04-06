@@ -1,6 +1,21 @@
 requirements.txt
 discoprowl.bak
 
+# Rust
+/target/
+
+# Frontend build output
+frontend/dist/
+frontend/node_modules/
+
+# Worktrees
+.worktrees/
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
