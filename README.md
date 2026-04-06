@@ -75,7 +75,7 @@ At least one notification channel (`DISCORD_WEBHOOK_URL`, `APPRISE_URL`, or both
 ```yaml
 services:
   discoprowl:
-    image: danktankk/discoprowl:latest
+    image: ghcr.io/danktankk/discoprowl:latest
     ports:
       - "3079:3079"
     volumes:
