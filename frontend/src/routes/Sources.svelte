@@ -1,6 +1,8 @@
 <script>
   import { onMount } from 'svelte'
   import { api } from '../lib/api.js'
+  import Modal from '../lib/Modal.svelte'
+  import FormField from '../lib/FormField.svelte'
 
   let sources = []
   let error = null
@@ -19,14 +21,15 @@
     catch(e) { error = e.message }
   }
 
-  function openNew() { editing = null; form = empty(); showModal = true }
-  function openEdit(s) { editing = s; form = { ...s, api_key: s.api_key ?? '' }; showModal = true }
+  function openNew()  { editing = null; form = empty(); showModal = true }
+  function openEdit(s){ editing = s; form = { ...s, api_key: s.api_key ?? '' }; showModal = true }
 
   async function save() {
     try {
-      if (editing) await api.sources.update(editing.id, form)
-      else await api.sources.create(form)
-      showModal = false; await load()
+      editing ? await api.sources.update(editing.id, form)
+              : await api.sources.create(form)
+      showModal = false
+      await load()
     } catch(e) { error = e.message }
   }
 
@@ -37,86 +40,130 @@
   }
 
   async function testNow(id) {
-    testResult = { ...testResult, [id]: 'Testing...' }
+    testResult = { ...testResult, [id]: { status: 'pending', msg: 'Testing...' } }
     try {
       const r = await api.sources.test(id)
-      testResult = { ...testResult, [id]: `${r.item_count} items returned` }
+      testResult = { ...testResult, [id]: { status: 'ok', msg: `${r.item_count} items returned` } }
     } catch(e) {
-      testResult = { ...testResult, [id]: `Error: ${e.message}` }
+      testResult = { ...testResult, [id]: { status: 'err', msg: e.message } }
     }
   }
+
+  const fmt = dt => dt ? new Date(dt).toLocaleString() : 'Never'
 </script>
 
-<div>
-  <div class="header"><h2>Sources</h2><button on:click={openNew}>+ Add</button></div>
-  {#if error}<p class="error">{error}</p>{/if}
+<div class="page">
+  <div class="page-header">
+    <h1 class="page-title">Sources</h1>
+    <button class="btn btn-primary" on:click={openNew}>+ New Source</button>
+  </div>
 
-  <table>
-    <thead><tr><th>Name</th><th>Type</th><th>URL</th><th>Interval</th><th>Last Polled</th><th>Enabled</th><th></th></tr></thead>
-    <tbody>
-      {#each sources as s}
-        <tr>
-          <td>{s.name}</td>
-          <td><span class="badge {s.source_type}">{s.source_type}</span></td>
-          <td class="url">{s.url}</td>
-          <td>{s.poll_interval_mins}m</td>
-          <td>{s.last_polled_at ? new Date(s.last_polled_at).toLocaleString() : 'Never'}</td>
-          <td>{s.enabled ? '✓' : '—'}</td>
-          <td class="actions">
-            <button on:click={() => testNow(s.id)}>Test</button>
-            <button on:click={() => openEdit(s)}>Edit</button>
-            <button class="danger" on:click={() => remove(s.id)}>Delete</button>
-          </td>
-        </tr>
-        {#if testResult[s.id]}
-          <tr class="test-row"><td colspan="7">{testResult[s.id]}</td></tr>
-        {/if}
-      {/each}
-    </tbody>
-  </table>
+  {#if error}<p class="error-msg">{error}</p>{/if}
 
-  {#if showModal}
-    <div class="overlay" on:click|self={() => showModal = false}>
-      <div class="modal">
-        <h3>{editing ? 'Edit' : 'New'} Source</h3>
-        <label>Name <input bind:value={form.name} /></label>
-        <label>Type
-          <select bind:value={form.source_type}>
-            {#each SOURCE_TYPES as t}<option value={t}>{t}</option>{/each}
-          </select>
-        </label>
-        <label>URL <input bind:value={form.url} placeholder="https://..." /></label>
-        <label>API Key <input bind:value={form.api_key} placeholder="(optional)" /></label>
-        <label>Poll Interval (minutes) <input type="number" bind:value={form.poll_interval_mins} /></label>
-        <label>Enabled <input type="checkbox" bind:checked={form.enabled} /></label>
-        <div class="modal-actions">
-          <button on:click={() => showModal = false}>Cancel</button>
-          <button class="primary" on:click={save}>Save</button>
-        </div>
-      </div>
-    </div>
-  {/if}
+  <div class="table-wrap">
+    {#if sources.length === 0}
+      <div class="empty-state">No sources configured. Add one to begin polling.</div>
+    {:else}
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Type</th>
+            <th>URL</th>
+            <th>Interval</th>
+            <th>Last Polled</th>
+            <th>Enabled</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {#each sources as s}
+            <tr>
+              <td class="name-cell">{s.name}</td>
+              <td><span class="badge badge-{s.source_type}">{s.source_type}</span></td>
+              <td class="url-cell mono">{s.url}</td>
+              <td class="muted">{s.poll_interval_mins}m</td>
+              <td class="muted mono">{fmt(s.last_polled_at)}</td>
+              <td>
+                <span class="status-dot {s.enabled ? 'on' : 'off'}"></span>
+              </td>
+              <td>
+                <div class="actions-cell">
+                  <button class="btn btn-ghost" on:click={() => testNow(s.id)}>Test</button>
+                  <button class="btn btn-ghost" on:click={() => openEdit(s)}>Edit</button>
+                  <button class="btn btn-danger" on:click={() => remove(s.id)}>Delete</button>
+                </div>
+              </td>
+            </tr>
+            {#if testResult[s.id]}
+              <tr class="test-row">
+                <td colspan="7">
+                  <span class="test-result {testResult[s.id].status}">
+                    {testResult[s.id].msg}
+                  </span>
+                </td>
+              </tr>
+            {/if}
+          {/each}
+        </tbody>
+      </table>
+    {/if}
+  </div>
 </div>
 
+{#if showModal}
+  <Modal title="{editing ? 'Edit' : 'New'} Source" onClose={() => showModal = false}>
+    <FormField label="Name">
+      <input bind:value={form.name} placeholder="e.g. My Prowlarr" />
+    </FormField>
+    <FormField label="Type">
+      <select bind:value={form.source_type}>
+        {#each SOURCE_TYPES as t}<option value={t}>{t}</option>{/each}
+      </select>
+    </FormField>
+    <FormField label="URL">
+      <input bind:value={form.url} placeholder="https://..." />
+    </FormField>
+    <FormField label="API Key" hint="Optional">
+      <input bind:value={form.api_key} placeholder="(optional)" />
+    </FormField>
+    <FormField label="Poll Interval (minutes)">
+      <input type="number" bind:value={form.poll_interval_mins} min="1" />
+    </FormField>
+    <FormField label="Enabled">
+      <input type="checkbox" class="toggle" bind:checked={form.enabled} />
+    </FormField>
+
+    <svelte:fragment slot="footer">
+      <button class="btn" on:click={() => showModal = false}>Cancel</button>
+      <button class="btn btn-primary" on:click={save}>Save</button>
+    </svelte:fragment>
+  </Modal>
+{/if}
+
 <style>
-  .header { display: flex; align-items: center; justify-content: space-between; }
-  h2 { margin-top: 0; }
-  table { width: 100%; border-collapse: collapse; }
-  th, td { border: 1px solid #ddd; padding: 0.4rem 0.6rem; font-size: 0.85rem; }
-  th { background: #f5f5f5; }
-  .url { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .badge { padding: 2px 6px; border-radius: 3px; font-size: 0.75rem; font-weight: bold; }
-  .badge.rss { background: #e8f5e9; color: #2e7d32; }
-  .badge.newznab { background: #e3f2fd; color: #1565c0; }
-  .badge.torznab { background: #fce4ec; color: #880e4f; }
-  .test-row td { background: #f9f9f9; color: #555; font-size: 0.82rem; padding-left: 1rem; }
-  .actions { white-space: nowrap; }
-  .danger { color: #c00; }
-  .primary { background: #5566dd; color: #fff; border: none; padding: 0.4rem 1rem; border-radius: 4px; }
-  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; }
-  .modal { background: #fff; padding: 1.5rem; border-radius: 8px; min-width: 420px; display: flex; flex-direction: column; gap: 0.8rem; }
-  .modal label { display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.9rem; }
-  .modal input, .modal select { padding: 0.3rem; border: 1px solid #ccc; border-radius: 4px; }
-  .modal-actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 0.5rem; }
-  .error { color: red; }
+  .name-cell { font-weight: 600; }
+  .muted     { color: var(--text-muted); font-size: 0.85rem; }
+  .mono      { font-family: var(--font-mono); font-size: 0.8rem; }
+
+  .url-cell {
+    max-width: 220px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text-muted);
+  }
+
+  .test-row td {
+    background: var(--surface-2);
+    padding: 0.5rem 0.875rem;
+  }
+
+  .test-result {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+  }
+  .test-result.ok      { color: var(--green); }
+  .test-result.err     { color: var(--red); }
+  .test-result.pending { color: var(--text-muted); }
 </style>

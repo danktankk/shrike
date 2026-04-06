@@ -12,82 +12,190 @@
   })
 
   async function test(channel) {
-    testResults = { ...testResults, [channel]: 'Sending...' }
+    testResults = { ...testResults, [channel]: { status: 'pending', msg: 'Sending...' } }
     try {
       await api.notifications.test(channel)
-      testResults = { ...testResults, [channel]: '✓ Sent' }
+      testResults = { ...testResults, [channel]: { status: 'ok', msg: 'Sent successfully' } }
     } catch(e) {
-      testResults = { ...testResults, [channel]: `✗ ${e.message}` }
+      testResults = { ...testResults, [channel]: { status: 'err', msg: e.message } }
     }
   }
+
+  $: channels = config ? [
+    {
+      key: 'discord',
+      label: 'Discord',
+      icon: '◈',
+      configured: !!config.discord_webhook_url,
+      detail: config.discord_webhook_url,
+      testable: true,
+    },
+    {
+      key: 'apprise',
+      label: 'Apprise',
+      icon: '◎',
+      configured: !!config.apprise_url,
+      detail: config.apprise_url,
+      testable: true,
+    },
+    {
+      key: 'pushover',
+      label: 'Pushover',
+      icon: '◆',
+      configured: !!config.pushover_configured,
+      detail: null,
+      testable: true,
+    },
+    {
+      key: 'steamgriddb',
+      label: 'SteamGridDB',
+      icon: '⬡',
+      configured: !!config.steamgriddb_configured,
+      detail: null,
+      testable: false,
+      note: config.steamgriddb_configured ? null : 'Fallback placeholder image will be used',
+    },
+  ] : []
 </script>
 
-<div>
-  <h2>Notifications</h2>
-  {#if error}<p class="error">{error}</p>{/if}
+<div class="page">
+  <div class="page-header">
+    <h1 class="page-title">Notifications</h1>
+  </div>
+
+  {#if error}<p class="error-msg">{error}</p>{/if}
+
+  <p class="note">Channels are configured via environment variables. Restart the container to apply changes.</p>
 
   {#if config}
-    <p class="note">Notification channels are configured via environment variables.
-    Restart the container to change them.</p>
+    <div class="channels-grid">
+      {#each channels as ch}
+        <div class="channel-card" class:configured={ch.configured}>
+          <div class="card-top">
+            <div class="card-title">
+              <span class="ch-icon">{ch.icon}</span>
+              <span>{ch.label}</span>
+            </div>
+            <div class="card-status" class:on={ch.configured}>
+              <span class="status-dot {ch.configured ? 'on' : 'off'}"></span>
+              {ch.configured ? 'Configured' : 'Not configured'}
+            </div>
+          </div>
 
-    <div class="channels">
-      <div class="channel" class:configured={config.discord_webhook_url}>
-        <div class="channel-header">
-          <span class="channel-name">Discord</span>
-          <span class="status">{config.discord_webhook_url ? '● Configured' : '○ Not configured'}</span>
-        </div>
-        {#if config.discord_webhook_url}
-          <p class="masked">URL: {config.discord_webhook_url}</p>
-          <button on:click={() => test('discord')}>Send Test</button>
-          {#if testResults.discord}<span class="result">{testResults.discord}</span>{/if}
-        {/if}
-      </div>
+          {#if ch.detail}
+            <div class="card-detail">{ch.detail}</div>
+          {/if}
 
-      <div class="channel" class:configured={config.apprise_url}>
-        <div class="channel-header">
-          <span class="channel-name">Apprise</span>
-          <span class="status">{config.apprise_url ? '● Configured' : '○ Not configured'}</span>
-        </div>
-        {#if config.apprise_url}
-          <p class="masked">URL: {config.apprise_url}</p>
-          <button on:click={() => test('apprise')}>Send Test</button>
-          {#if testResults.apprise}<span class="result">{testResults.apprise}</span>{/if}
-        {/if}
-      </div>
+          {#if ch.note}
+            <div class="card-note">{ch.note}</div>
+          {/if}
 
-      <div class="channel" class:configured={config.pushover_configured}>
-        <div class="channel-header">
-          <span class="channel-name">Pushover</span>
-          <span class="status">{config.pushover_configured ? '● Configured' : '○ Not configured'}</span>
+          {#if ch.configured && ch.testable}
+            <div class="card-actions">
+              <button class="btn" on:click={() => test(ch.key)}>Send Test</button>
+              {#if testResults[ch.key]}
+                <span class="test-result {testResults[ch.key].status}">
+                  {testResults[ch.key].msg}
+                </span>
+              {/if}
+            </div>
+          {/if}
         </div>
-        {#if config.pushover_configured}
-          <button on:click={() => test('pushover')}>Send Test</button>
-          {#if testResults.pushover}<span class="result">{testResults.pushover}</span>{/if}
-        {/if}
-      </div>
-
-      <div class="channel" class:configured={config.steamgriddb_configured}>
-        <div class="channel-header">
-          <span class="channel-name">SteamGridDB (box art)</span>
-          <span class="status">{config.steamgriddb_configured ? '● Configured' : '○ Not configured (fallback image used)'}</span>
-        </div>
-      </div>
+      {/each}
     </div>
   {/if}
 </div>
 
 <style>
-  h2 { margin-top: 0; }
-  .note { color: #666; font-size: 0.9rem; margin-bottom: 1.5rem; }
-  .channels { display: flex; flex-direction: column; gap: 1rem; }
-  .channel { border: 1px solid #ddd; border-radius: 6px; padding: 1rem; }
-  .channel.configured { border-color: #4caf50; }
-  .channel-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; }
-  .channel-name { font-weight: bold; }
-  .status { font-size: 0.85rem; color: #888; }
-  .channel.configured .status { color: #4caf50; }
-  .masked { font-size: 0.82rem; color: #666; margin: 0.3rem 0; font-family: monospace; }
-  button { padding: 0.3rem 0.8rem; cursor: pointer; }
-  .result { margin-left: 0.5rem; font-size: 0.85rem; }
-  .error { color: red; }
+  .note {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    margin: 0;
+  }
+
+  .channels-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+  }
+
+  .channel-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    transition: border-color 0.15s;
+  }
+
+  .channel-card.configured {
+    border-color: rgba(249, 115, 22, 0.25);
+    background: var(--surface);
+  }
+
+  .card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .card-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: var(--font-head);
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .ch-icon {
+    color: var(--accent);
+    font-size: 1rem;
+  }
+
+  .card-status {
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+  }
+
+  .card-status.on { color: var(--green); }
+
+  .card-detail {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    background: var(--surface-2);
+    padding: 0.4rem 0.6rem;
+    border-radius: 5px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .card-note {
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    font-style: italic;
+  }
+
+  .card-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 0.25rem;
+  }
+
+  .test-result {
+    font-size: 0.8rem;
+    font-family: var(--font-mono);
+  }
+  .test-result.ok      { color: var(--green); }
+  .test-result.err     { color: var(--red); }
+  .test-result.pending { color: var(--text-muted); }
 </style>
