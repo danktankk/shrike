@@ -53,3 +53,31 @@ async fn create_and_list_search_term() {
     assert_eq!(json.as_array().unwrap().len(), 1);
     assert_eq!(json[0]["query"], "elden ring");
 }
+
+#[tokio::test]
+#[serial_test::serial]
+async fn create_and_list_source() {
+    let app = test_app().await;
+    let create_resp = app.clone()
+        .oneshot(Request::builder()
+            .method("POST")
+            .uri("/api/sources")
+            .header("content-type", "application/json")
+            .body(Body::from(r#"{"name":"Test Feed","source_type":"rss","url":"https://example.com/feed.xml","poll_interval_mins":720}"#))
+            .unwrap())
+        .await
+        .unwrap();
+    assert_eq!(create_resp.status(), StatusCode::CREATED);
+    let body = axum::body::to_bytes(create_resp.into_body(), usize::MAX).await.unwrap();
+    let source: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(source["source_type"], "rss");
+
+    // List
+    let list_resp = app
+        .oneshot(Request::builder().uri("/api/sources").body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+    let list_body = axum::body::to_bytes(list_resp.into_body(), usize::MAX).await.unwrap();
+    let sources: serde_json::Value = serde_json::from_slice(&list_body).unwrap();
+    assert_eq!(sources.as_array().unwrap().len(), 1);
+}
