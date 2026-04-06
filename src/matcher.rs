@@ -30,8 +30,8 @@ pub fn whole_word_match(query: &str, title: &str) -> bool {
             return true;
         }
 
-        // Advance past this match position (advance by at least 1 byte)
-        start = abs_pos + 1;
+        // Advance by one char (not one byte) to stay on valid UTF-8 boundaries
+        start = abs_pos + title_lower[abs_pos..].chars().next().map_or(1, |c| c.len_utf8());
     }
     false
 }
