@@ -1,17 +1,19 @@
+networks:
+  proxy:
+    external: true
+
 services:
   discoprowl:
     image: ghcr.io/danktankk/discoprowl:latest
-    build: .
     ports:
       - "3079:3079"
     volumes:
       - ./data:/data
+    networks:
+      - proxy
     environment:
       DATABASE_URL: /data/discoprowl.db
       BIND_ADDR: 0.0.0.0:3079
-      COMMAFEED_URL: http://192.168.160.155:8882
-      COMMAFEED_USER: CC
-      COMMAFEED_PASS: ${COMMAFEED_PASS}
       DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL}
       APPRISE_URL: ${APPRISE_URL:-}
       PUSHOVER_APP_TOKEN: ${PUSHOVER_APP_TOKEN:-}
@@ -19,9 +21,3 @@ services:
       STEAMGRIDDB_API_KEY: ${STEAMGRIDDB_API_KEY:-}
       RUST_LOG: info
     restart: unless-stopped
-    networks:
-      - proxy
-
-networks:
-  proxy:
-    external: true
