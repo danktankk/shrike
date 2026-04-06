@@ -3,143 +3,141 @@
   <img src="https://raw.githubusercontent.com/danktankk/discoprowl/main/assets/logo-namer.png" alt="DiscoProwl Text" height="65" style="vertical-align: middle; margin-left: 10px;"/>
 </p>
 
-
+<p align="center">
+  <strong>v2.0.0 — Rust rewrite</strong>
+</p>
 
 ---
 
 ## What Is DiscoProwl?
 
-Have you ever found yourself watching upcoming latest AAA game title videos and then saw several you MUST have?  Did you then make a list of them and diligently search for these games daily until it released? No?  Me either. I just forgot about it until some random conversation brought these items back into focus.  But by now, there are *other games* that are just around the corner and you have missed time that *could have been spent* happily wasting your life away playing your new game.  That sucks, so I decided to whip up a little 'app-for-that' to help out on the whole "waste your life away" thing.    
+Have you ever found yourself watching upcoming AAA game title videos and made a mental list of games you *had* to have — only to completely forget about them until someone brought them up in conversation? Yeah, me neither. But just in case, DiscoProwl has you covered.
 
-**DiscoProwl** is a lightweight Python-powered search assistant for [Prowlarr](https://github.com/Prowlarr/Prowlarr) that was created for a specific need I have.  There is no WebUI for this project currently and doesnt really need one.  Just start the container and then wait for notificaitons after testing with a known release.  It periodically searches your configured indexers for game titles (or anything really) you want, filters out irrelevant junk that you define (Ex: console releases, macOS, old uploads, etc), and notifies you when results match your query.  This is useful when you are waiting on a game to drop and want to get it as soon as possible!  You will be notified and then you decide how to proceed.  In future releases then will be more streamlined.
+**DiscoProwl** watches configured sources for game titles (or anything, really) you care about and notifies you the moment they appear. Set it and forget it.
 
- **Notifications** are delivered with choice of the following for the moment:
-- Discord webhook (rich embed)
-- [Apprise](https://github.com/caronc/apprise) services
-- Pushover (mobile push)
-
-It can even pull **box art from SteamGridDB** if you provide an API key — optional, but schmexy!
+**v2.0 is a full rewrite in Rust.** It ships as a single binary with an embedded web UI — no more managing search terms via env vars. Add sources, define search terms, and monitor match history all from the browser.
 
 ---
 
-## Required Environment Variables
+## What's New in v2.0
 
-| Variable           | Description                                      |
-|--------------------|--------------------------------------------------|
-| `PROWLARR_URL`     | URL to your Prowlarr instance (`https://...`)    |
-| `API_KEY`          | Your Prowlarr API key                             |
-| `SEARCH_ITEMS`     | Comma-separated list of search terms              |
-| `INTERVAL_HOURS`   | Search interval in hours (default: `12`)          |
-| `MAX_RESULTS`      | Max results per game to report (default: `3`)    |
-| `MAX_AGE_DAYS`     | Ignore results older than this (default: `30`)   |
-
----
-
-##  Notification Options
-
-**You must configure at least one of these:**
-
-| Variable                | Description                                 |
-|-------------------------|---------------------------------------------|
-| `DISCORD_WEBHOOK_URL`   | Discord webhook URL                          |
-| `APPRISE_URL`           | Apprise-compatible URL (e.g., Telegram, etc) |
-| `PUSHOVER_APP_TOKEN`    | Pushover App Token                           |
-| `PUSHOVER_USER_KEY`     | Pushover User Key                            |
+- **Web UI** — Manage search terms, sources, and notifications from a clean browser interface (port `3079`)
+- **Multiple source types** — RSS feeds (via CommaFeed), Newznab indexers, and Torznab (Prowlarr/Jackett) — all in one app
+- **SQLite persistence** — Match history is stored and browsable; no more re-notifying without context
+- **Per-source poll intervals** — Each source can have its own schedule (default 12h)
+- **Background scheduler** — Polls automatically based on each source's interval; no manual restarts needed
+- **Single binary** — Svelte frontend embedded at compile time via `rust-embed`
+- **No dedup by design** — Every poll cycle re-notifies on matches, so if you miss a notification it comes back around
 
 ---
 
-## Optional Extras
+## Notification Channels
 
-| Variable                | Description                                                      |
-|-------------------------|------------------------------------------------------------------|
-| `STEAMGRIDDB_API_KEY`   | API key for pulling box art from [SteamGridDB](https://www.steamgriddb.com/) |
-| `DISALLOWED_KEYWORDS`   | Comma-separated words to exclude (e.g. `ps5,xbox,macos`)         |
+At least one must be configured:
 
----
-
-## How It Works
-
-1. Reads your search keywords from `SEARCH_ITEMS`
-2. Queries Prowlarr's `/api` endpoint
-3. Filters results using:
-   -  Category: must include `games` or `pc`
-   -  Filename must include the **full search term** as a whole word
-   -  Disallowed terms like `ps5`, `macos`, etc.
-   -  Age must be below `MAX_AGE_DAYS`
-4. Sends notifications through all enabled channels
-5. Includes box art from SteamGridDB (if enabled)
-6. Sleeps for `INTERVAL_HOURS`, then repeats
+| Channel | Method |
+|---------|--------|
+| Discord | Webhook with rich embed + optional SteamGridDB box art |
+| Apprise | Single URL covering Telegram, Slack, ntfy, and more |
+| Pushover | Direct API with image attachment |
 
 ---
 
-##  Docker Compose Example
+## Environment Variables
+
+### Required
+
+| Variable | Description |
+|----------|-------------|
+| `DATABASE_URL` | Path to SQLite file — e.g. `/data/discoprowl.db` |
+
+### Optional
+
+| Variable | Description |
+|----------|-------------|
+| `BIND_ADDR` | Listen address (default: `0.0.0.0:3079`) |
+| `COMMAFEED_URL` | CommaFeed instance URL for RSS sources |
+| `COMMAFEED_USER` | CommaFeed username (default: `CC`) |
+| `COMMAFEED_PASS` | CommaFeed password |
+| `DISCORD_WEBHOOK_URL` | Discord webhook URL |
+| `APPRISE_URL` | Apprise-compatible URL |
+| `PUSHOVER_APP_TOKEN` | Pushover App Token |
+| `PUSHOVER_USER_KEY` | Pushover User Key |
+| `STEAMGRIDDB_API_KEY` | API key for box art (optional — falls back to placeholder) |
+| `RUST_LOG` | Log level — e.g. `info`, `debug` (default: `info`) |
+
+At least one notification channel (`DISCORD_WEBHOOK_URL`, `APPRISE_URL`, or both Pushover vars) must be set at startup.
+
+---
+
+## Docker Compose
 
 ```yaml
 services:
   discoprowl:
     image: danktankk/discoprowl:latest
+    ports:
+      - "3079:3079"
+    volumes:
+      - ./data:/data
     environment:
-      PROWLARR_URL: ${PROWLARR_URL}
-      API_KEY: ${API_KEY}
-      SEARCH_ITEMS: "game 1,game2" 
-      MAX_AGE_DAYS: ""      ## ---[ defaults to 30 days ]--- ##
-      INTERVAL_HOURS: ""    ## ---[ defaults to 12 hours ]--- ##
-      MAX_RESULTS: ""       ## ---[ defaults to 3 ]--- ##
-      DISALLOWED_KEYWORDS: "ps4,ps5"
+      DATABASE_URL: /data/discoprowl.db
+      BIND_ADDR: 0.0.0.0:3079
+      COMMAFEED_URL: http://your-commafeed:8882
+      COMMAFEED_USER: CC
+      COMMAFEED_PASS: ${COMMAFEED_PASS}
       DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL}
-      STEAMGRIDDB_API_KEY: ${STEAMGRIDDB_API}
-      ## Provide only one of the following notification configurations:
-      ## DISCORD_WEBHOOK_URL: "https://discord.com/api/webhooks/yourhook"
-      ## APPRISE_URL: "apprise://yourappriseurl"
-      ## PUSHOVER_APP_TOKEN: "yourpushoverapptoken"
-      ## PUSHOVER_USER_KEY: "yourpushoveruserkey"
+      APPRISE_URL: ${APPRISE_URL:-}
+      PUSHOVER_APP_TOKEN: ${PUSHOVER_APP_TOKEN:-}
+      PUSHOVER_USER_KEY: ${PUSHOVER_USER_KEY:-}
+      STEAMGRIDDB_API_KEY: ${STEAMGRIDDB_API_KEY:-}
+      RUST_LOG: info
     restart: unless-stopped
+```
 
-Age filtering (e.g., ignore stuff older than 30 days)
+The web UI is available at `http://your-host:3079` once the container is running.
 
-Thumbnail artwork via SteamGridDB (optional)
+---
 
-Discord, Apprise, or Pushover notifications
+## Source Types
 
-Runs as a Docker container or directly on any system with Python 3.9+.
+| Type | Description |
+|------|-------------|
+| `rss` | RSS/Atom feed — direct URL or via CommaFeed REST API |
+| `newznab` | Newznab-compatible Usenet indexer |
+| `torznab` | Torznab-compatible tracker (Prowlarr, Jackett) |
 
-## Required Environment Variables
-Variable	Description
-PROWLARR_URL	Your Prowlarr instance URL (https only)
-API_KEY	  Prowlarr API key
-SEARCH_ITEMS	Comma-separated search terms
-INTERVAL_HOURS	(Default: 12) Time between search runs
-MAX_RESULTS	(Default: 3) Max results per search term
-MAX_AGE_DAYS	(Default: 30) Ignore older torrents
-  Notification Options
-You must set at least one of these:
+Sources are added and managed through the UI. Each source has its own poll interval, API key, and enable/disable toggle.
 
-## Variable	Description
-DISCORD_WEBHOOK_URL	Discord webhook for sending results
-APPRISE_URL	        Apprise notification target
-PUSHOVER_APP_TOKEN	Pushover App Token
-PUSHOVER_USER_KEY	Pushover User Key
+---
 
-## Optional Extras
-Variable	Description
-STEAMGRIDDB_API_KEY	API key for getting game art (optional)
-DISALLOWED_KEYWORDS	Comma-separated words to block (optional)
+## Matching & Filtering
 
-## How It Works
-Takes your SEARCH_ITEMS list and queries them against Prowlarr
+Per search term:
 
-Filters out anything that’s too old, not categorized as PC/Games, or contains blacklisted keywords
+- **Whole-word match** on item title (regex boundary, case-insensitive)
+- **max_age_days** — skip items older than N days
+- **disallowed_keywords** — skip items whose title contains any of these (comma-separated, case-insensitive)
 
-Sends a rich Discord embed (or other notifications)
+---
 
-Optionally includes game thumbnails via SteamGridDB
+## Web UI
 
-Repeats every INTERVAL_HOURS
+| View | Purpose |
+|------|---------|
+| Dashboard | Recent match history across all terms and sources, filterable |
+| Search Terms | Add / edit / delete search terms |
+| Sources | Add / edit / delete sources; Test button for live fetch |
+| Notifications | Channel status and per-channel test button |
 
-## Tips
-This script does not filter based on just partial keyword matches — it uses whole-word boundary detection.
+---
 
-If no image is found for a game title, it uses a fallback from your repo.
+## Contributor
 
-It’s optimized to work in headless environments and logs to stdout for Docker logs -f.
+- [danktankk](https://github.com/danktankk)
 
+---
+
+## License
+
+MIT
