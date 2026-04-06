@@ -35,6 +35,7 @@ pub fn build_source(
         "rss" => Some(Box::new(rss::RssSource::new(
             source.url.clone(),
             source.api_key.clone(),
+            http.clone(),
         ))),
         "newznab" => Some(Box::new(newznab::NewznabSource::new(
             source.url.clone(),
