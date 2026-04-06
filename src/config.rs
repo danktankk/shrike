@@ -38,6 +38,7 @@ impl Config {
 mod tests {
     use super::*;
 
+    #[serial_test::serial]
     #[test]
     fn config_requires_database_url() {
         std::env::remove_var("DATABASE_URL");
@@ -45,6 +46,7 @@ mod tests {
         assert!(result.is_err());
     }
 
+    #[serial_test::serial]
     #[test]
     fn config_parses_optional_channels() {
         std::env::set_var("DATABASE_URL", "/tmp/test.db");
