@@ -1,13 +1,5 @@
 // src/main.rs
-mod config;
-mod db;
-mod models;
-mod matcher;
-mod scheduler;
-mod sources;
-mod notifier;
-mod api;
-mod assets;
+use discoprowl::*;
 
 use tracing::info;
 
