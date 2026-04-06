@@ -31,6 +31,45 @@ Have you ever found yourself watching upcoming AAA game title videos and made a 
 
 ---
 
+## Quick Start
+
+```bash
+docker pull ghcr.io/danktankk/discoprowl:latest
+```
+
+Multi-arch image — supports `linux/amd64` and `linux/arm64`.
+
+---
+
+## Docker Compose
+
+```yaml
+services:
+  discoprowl:
+    image: ghcr.io/danktankk/discoprowl:latest
+    ports:
+      - "3079:3079"
+    volumes:
+      - ./data:/data
+    environment:
+      DATABASE_URL: /data/discoprowl.db
+      BIND_ADDR: 0.0.0.0:3079
+      COMMAFEED_URL: http://your-commafeed:8882
+      COMMAFEED_USER: CC
+      COMMAFEED_PASS: ${COMMAFEED_PASS}
+      DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL}
+      APPRISE_URL: ${APPRISE_URL:-}
+      PUSHOVER_APP_TOKEN: ${PUSHOVER_APP_TOKEN:-}
+      PUSHOVER_USER_KEY: ${PUSHOVER_USER_KEY:-}
+      STEAMGRIDDB_API_KEY: ${STEAMGRIDDB_API_KEY:-}
+      RUST_LOG: info
+    restart: unless-stopped
+```
+
+The web UI is available at `http://your-host:3079` once the container is running.
+
+---
+
 ## Notification Channels
 
 At least one must be configured:
@@ -67,35 +106,6 @@ At least one must be configured:
 | `RUST_LOG` | Log level — e.g. `info`, `debug` (default: `info`) |
 
 At least one notification channel (`DISCORD_WEBHOOK_URL`, `APPRISE_URL`, or both Pushover vars) must be set at startup.
-
----
-
-## Docker Compose
-
-```yaml
-services:
-  discoprowl:
-    image: ghcr.io/danktankk/discoprowl:latest
-    ports:
-      - "3079:3079"
-    volumes:
-      - ./data:/data
-    environment:
-      DATABASE_URL: /data/discoprowl.db
-      BIND_ADDR: 0.0.0.0:3079
-      COMMAFEED_URL: http://your-commafeed:8882
-      COMMAFEED_USER: CC
-      COMMAFEED_PASS: ${COMMAFEED_PASS}
-      DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL}
-      APPRISE_URL: ${APPRISE_URL:-}
-      PUSHOVER_APP_TOKEN: ${PUSHOVER_APP_TOKEN:-}
-      PUSHOVER_USER_KEY: ${PUSHOVER_USER_KEY:-}
-      STEAMGRIDDB_API_KEY: ${STEAMGRIDDB_API_KEY:-}
-      RUST_LOG: info
-    restart: unless-stopped
-```
-
-The web UI is available at `http://your-host:3079` once the container is running.
 
 ---
 
