@@ -38,6 +38,7 @@ async fn main() -> anyhow::Result<()> {
     let sched_http = http.clone();
     tokio::spawn(async move {
         scheduler::run(sched_pool, sched_notifier, sched_http).await;
+        tracing::error!("Scheduler task exited unexpectedly — no further polling will occur");
     });
 
     let state = api::AppState {
@@ -48,7 +49,8 @@ async fn main() -> anyhow::Result<()> {
     };
 
     let app = api::router(state);
-    let addr: std::net::SocketAddr = config.bind_addr.parse()?;
+    let addr: std::net::SocketAddr = config.bind_addr.parse()
+        .map_err(|e| anyhow::anyhow!("Invalid BIND_ADDR '{}': {e}", config.bind_addr))?;
     info!("Listening on {addr}");
 
     let listener = tokio::net::TcpListener::bind(addr).await?;
