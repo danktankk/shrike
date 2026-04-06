@@ -65,3 +65,15 @@ fn keywords_ok_case_insensitive() {
 fn keywords_ok_empty_list_always_passes() {
     assert!(keywords_ok("Elden Ring TRAINER", &[]));
 }
+
+#[test]
+fn whole_word_match_utf8_adjacent_no_false_positive() {
+    // "ring" should NOT match "éring" (é directly precedes 'r')
+    assert!(!whole_word_match("ring", "éring"));
+}
+
+#[test]
+fn keywords_ok_mixed_case_keyword_blocked() {
+    // Caller passes mixed-case keyword — should still block
+    assert!(!keywords_ok("Elden Ring TRAINER", &["Trainer".to_string()]));
+}
