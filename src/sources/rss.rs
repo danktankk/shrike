@@ -9,19 +9,19 @@ use feed_rs::parser;
 pub struct RssSource {
     pub url: String,
     pub api_key: Option<String>,
+    pub http: reqwest::Client,
 }
 
 impl RssSource {
-    pub fn new(url: String, api_key: Option<String>) -> Self {
-        Self { url, api_key }
+    pub fn new(url: String, api_key: Option<String>, http: reqwest::Client) -> Self {
+        Self { url, api_key, http }
     }
 }
 
 #[async_trait]
 impl Source for RssSource {
     async fn fetch(&self, _term: &SearchTerm) -> Result<Vec<SourceItem>> {
-        let client = reqwest::Client::new();
-        let mut req = client.get(&self.url);
+        let mut req = self.http.get(&self.url);
 
         // If api_key is set, use it as Basic auth password with username "CC"
         if let Some(pass) = &self.api_key {
@@ -97,6 +97,7 @@ mod tests {
         let source = RssSource::new(
             format!("{}/feed.xml", server.uri()),
             None, // no auth
+            reqwest::Client::new(),
         );
 
         let term = crate::models::SearchTerm {
@@ -133,7 +134,7 @@ mod tests {
             .mount(&server)
             .await;
 
-        let source = RssSource::new(format!("{}/empty.xml", server.uri()), None);
+        let source = RssSource::new(format!("{}/empty.xml", server.uri()), None, reqwest::Client::new());
         let term = crate::models::SearchTerm {
             id: 1, name: "T".into(), query: "t".into(), enabled: true,
             max_age_days: None, disallowed_keywords: None, created_at: chrono::Utc::now(),
