@@ -27,6 +27,10 @@ pub async fn init_pool(database_url: &str) -> Result<SqlitePool> {
         .run(&pool)
         .await?;
 
+    sqlx::query("PRAGMA foreign_keys = ON")
+        .execute(&pool)
+        .await?;
+
     Ok(pool)
 }
 
