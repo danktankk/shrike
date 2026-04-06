@@ -7,7 +7,7 @@ COPY frontend/ ./
 RUN npm run build
 
 # ── Stage 2: Rust build ──────────────────────────────────────────────────────
-FROM rust:1.82-slim-bookworm AS rust-build
+FROM rust:1.85-slim-bookworm AS rust-build
 RUN apt-get update && apt-get install -y pkg-config libssl-dev && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
