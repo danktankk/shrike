@@ -46,7 +46,7 @@ pub fn age_ok(pub_date: Option<DateTime<Utc>>, max_age_days: i64) -> bool {
         None => true,
         Some(dt) => {
             let age = Utc::now().signed_duration_since(dt).num_days();
-            age <= max_age_days
+            age >= 0 && age <= max_age_days
         }
     }
 }

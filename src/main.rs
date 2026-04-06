@@ -38,7 +38,8 @@ async fn main() -> anyhow::Result<()> {
     let sched_http = http.clone();
     tokio::spawn(async move {
         scheduler::run(sched_pool, sched_notifier, sched_http).await;
-        tracing::error!("Scheduler task exited unexpectedly — no further polling will occur");
+        tracing::error!("Scheduler task exited unexpectedly — terminating process so container can restart");
+        std::process::exit(1);
     });
 
     let state = api::AppState {
