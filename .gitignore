@@ -103,3 +103,4 @@ env/
 
 # extensions
 .bak
+!frontend/src/lib/
