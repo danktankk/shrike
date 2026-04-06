@@ -71,6 +71,8 @@ async fn create_and_list_source() {
     let body = axum::body::to_bytes(create_resp.into_body(), usize::MAX).await.unwrap();
     let source: serde_json::Value = serde_json::from_slice(&body).unwrap();
     assert_eq!(source["source_type"], "rss");
+    assert_eq!(source["enabled"], true);
+    assert_eq!(source["poll_interval_mins"], 720);
 
     // List
     let list_resp = app
