@@ -98,6 +98,9 @@ pub async fn test_source(State(state): State<AppState>, Path(id): Path<i64>) -> 
                 "indexer": i.indexer,
             })).collect::<Vec<_>>()
         })).into_response(),
-        Err(e) => (StatusCode::BAD_GATEWAY, Json(serde_json::json!({"error": e.to_string()}))).into_response(),
+        Err(e) => {
+            tracing::error!("test_source '{}' fetch error: {e}", source.name);
+            (StatusCode::BAD_GATEWAY, Json(serde_json::json!({"error": e.to_string()}))).into_response()
+        }
     }
 }

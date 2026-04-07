@@ -205,7 +205,8 @@
   }
   :global(.badge-rss)     { background: var(--green-dim); color: var(--green); }
   :global(.badge-newznab) { background: var(--blue-dim);  color: var(--blue); }
-  :global(.badge-torznab) { background: var(--accent-dim); color: var(--accent); }
+  :global(.badge-torznab)  { background: var(--accent-dim); color: var(--accent); }
+  :global(.badge-prowlarr) { background: var(--accent-dim); color: var(--accent); }
 
   :global(.status-dot) {
     display: inline-block;
