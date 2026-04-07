@@ -23,6 +23,9 @@ pub struct SourceItem {
 pub trait Source: Send + Sync {
     async fn fetch(&self, term: &SearchTerm) -> Result<Vec<SourceItem>>;
     fn source_type(&self) -> &'static str;
+    /// Returns false for sources like RSS that return all items regardless of query.
+    /// The scheduler uses this to fetch once and filter all terms client-side.
+    fn is_search_based(&self) -> bool { true }
 }
 
 /// Build the correct Source implementation for a DB Source row.

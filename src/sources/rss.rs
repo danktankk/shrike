@@ -28,7 +28,14 @@ impl Source for RssSource {
             req = req.basic_auth("CC", Some(pass));
         }
 
-        let body = req.send().await?.bytes().await?;
+        let resp = req.send().await?;
+        let status = resp.status();
+        let body = resp.bytes().await?;
+        if let Err(e) = parser::parse(body.as_ref()) {
+            let preview = String::from_utf8_lossy(&body[..body.len().min(300)]);
+            tracing::warn!("RSS parse failed (HTTP {status}): {e} — body preview: {preview}");
+            return Err(e.into());
+        }
         let feed = parser::parse(body.as_ref())?;
 
         let items = feed.entries.into_iter().map(|entry| {
@@ -56,6 +63,7 @@ impl Source for RssSource {
     }
 
     fn source_type(&self) -> &'static str { "rss" }
+    fn is_search_based(&self) -> bool { false }
 }
 
 #[cfg(test)]

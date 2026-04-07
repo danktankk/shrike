@@ -7,7 +7,7 @@ use tracing::{info, warn, error};
 use crate::models::{Source, SearchTerm};
 use crate::matcher::{whole_word_match, age_ok, keywords_ok};
 use crate::notifier::Notifier;
-use crate::sources::build_source;
+use crate::sources::{build_source, SourceItem};
 
 /// Starts the background poll loop. Runs indefinitely — call from a spawned task.
 pub async fn run(pool: SqlitePool, notifier: Arc<Notifier>, http: reqwest::Client) {
@@ -26,7 +26,6 @@ async fn poll_due_sources(
     notifier: &Arc<Notifier>,
     http: &reqwest::Client,
 ) -> anyhow::Result<()> {
-    // Find all enabled sources that are due for a poll
     let sources: Vec<Source> = sqlx::query_as(
         r#"SELECT * FROM sources
            WHERE enabled = 1
@@ -44,7 +43,6 @@ async fn poll_due_sources(
 
     info!("Polling {} due source(s)", sources.len());
 
-    // Load all enabled search terms (same set for every source in this tick)
     let terms: Vec<SearchTerm> = sqlx::query_as(
         "SELECT * FROM search_terms WHERE enabled = 1"
     )
@@ -59,7 +57,6 @@ async fn poll_due_sources(
     for source in sources {
         info!("Polling source '{}' ({})", source.name, source.source_type);
 
-        // Mark polled immediately to prevent double-dispatch if the fetch is slow
         if let Err(e) = sqlx::query(
             "UPDATE sources SET last_polled_at = datetime('now') WHERE id = ?"
         )
@@ -78,48 +75,75 @@ async fn poll_due_sources(
             }
         };
 
-        for term in &terms {
-            let items = match source_impl.fetch(term).await {
+        if source_impl.is_search_based() {
+            // Search-based (Newznab, Torznab, Prowlarr): query per term
+            for term in &terms {
+                let items = match source_impl.fetch(term).await {
+                    Ok(i) => i,
+                    Err(e) => {
+                        warn!("Fetch failed for term '{}' on source '{}': {e}", term.query, source.name);
+                        continue;
+                    }
+                };
+                process_matches(pool, notifier, &source, term, items).await;
+            }
+        } else {
+            // Feed-based (RSS): fetch once, filter all terms client-side
+            let dummy_term = SearchTerm {
+                id: 0, name: String::new(), query: String::new(),
+                enabled: true, max_age_days: None, disallowed_keywords: None,
+                created_at: chrono::Utc::now(),
+            };
+            let items = match source_impl.fetch(&dummy_term).await {
                 Ok(i) => i,
                 Err(e) => {
-                    warn!("Fetch failed for term '{}' on source '{}': {e}", term.query, source.name);
+                    warn!("Fetch failed for source '{}': {e}", source.name);
                     continue;
                 }
             };
-
-            let max_age = term.max_age_days.unwrap_or(30);
-            let disallowed = term.disallowed_list();
-
-            for item in items {
-                // Apply all three filters
-                if !whole_word_match(&term.query, &item.title) { continue; }
-                if !age_ok(item.pub_date, max_age) { continue; }
-                if !keywords_ok(&item.title, &disallowed) { continue; }
-
-                // Notify (returns JSON array of channels fired)
-                let channels = notifier.notify(term, &item, &source.name).await;
-
-                // Log the match
-                if let Err(e) = sqlx::query(
-                    r#"INSERT INTO matches
-                       (search_term_id, source_id, item_title, item_url, item_guid, notification_channels)
-                       VALUES (?, ?, ?, ?, ?, ?)"#
-                )
-                .bind(term.id)
-                .bind(source.id)
-                .bind(&item.title)
-                .bind(&item.url)
-                .bind(&item.guid)
-                .bind(&channels)
-                .execute(pool)
-                .await {
-                    error!("Failed to log match '{}': {e}", item.title);
-                }
-
-                info!("Matched: '{}' for term '{}' (channels: {})", item.title, term.query, channels);
+            info!("Source '{}' returned {} item(s)", source.name, items.len());
+            for term in &terms {
+                process_matches(pool, notifier, &source, term, items.clone()).await;
             }
         }
     }
 
     Ok(())
+}
+
+async fn process_matches(
+    pool: &SqlitePool,
+    notifier: &Arc<Notifier>,
+    source: &Source,
+    term: &SearchTerm,
+    items: Vec<SourceItem>,
+) {
+    let max_age = term.max_age_days.unwrap_or(30);
+    let disallowed = term.disallowed_list();
+
+    for item in items {
+        if !whole_word_match(&term.query, &item.title) { continue; }
+        if !age_ok(item.pub_date, max_age) { continue; }
+        if !keywords_ok(&item.title, &disallowed) { continue; }
+
+        let channels = notifier.notify(term, &item, &source.name).await;
+
+        if let Err(e) = sqlx::query(
+            r#"INSERT INTO matches
+               (search_term_id, source_id, item_title, item_url, item_guid, notification_channels)
+               VALUES (?, ?, ?, ?, ?, ?)"#
+        )
+        .bind(term.id)
+        .bind(source.id)
+        .bind(&item.title)
+        .bind(&item.url)
+        .bind(&item.guid)
+        .bind(&channels)
+        .execute(pool)
+        .await {
+            error!("Failed to log match '{}': {e}", item.title);
+        }
+
+        info!("Matched: '{}' for term '{}' (channels: {})", item.title, term.query, channels);
+    }
 }
