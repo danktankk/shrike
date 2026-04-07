@@ -15,6 +15,8 @@ frontend/node_modules/
 *.db
 *.db-shm
 *.db-wal
+data/
+sqlite:
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
