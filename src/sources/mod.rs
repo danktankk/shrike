@@ -42,7 +42,7 @@ pub fn build_source(
             source.api_key.clone().unwrap_or_default(),
             http,
         ))),
-        "torznab" => Some(Box::new(torznab::TorznabSource::new(
+        "torznab" | "prowlarr" => Some(Box::new(torznab::TorznabSource::new(
             source.url.clone(),
             source.api_key.clone().unwrap_or_default(),
             http,

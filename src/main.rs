@@ -28,6 +28,7 @@ async fn main() -> anyhow::Result<()> {
     let http = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(30))
         .user_agent("discoprowl/2.0")
+        .danger_accept_invalid_certs(true)
         .build()?;
 
     let notifier = Arc::new(notifier::Notifier::new(config.clone(), http.clone()));

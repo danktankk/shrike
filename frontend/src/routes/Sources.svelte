@@ -10,7 +10,7 @@
   let editing = null
   let testResult = {}
 
-  const SOURCE_TYPES = ['rss', 'newznab', 'torznab']
+  const SOURCE_TYPES = ['rss', 'newznab', 'torznab', 'prowlarr']
   const empty = () => ({ name: '', source_type: 'rss', url: '', api_key: '', poll_interval_mins: 720, enabled: true })
   let form = empty()
 
