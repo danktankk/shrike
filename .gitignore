@@ -85,6 +85,16 @@ instance/
 
 # Sphinx documentation
 docs/_build/
+docs/superpowers/
+
+# Rust integration tests (not copied into Docker build context;
+# keep local but untracked)
+tests/
+
+# Legacy sqlx migrations — schema is now inlined in src/db.rs as a
+# consolidated idempotent block. Directory is ignored so stray files
+# don't accidentally get tracked.
+migrations/
 
 # PyBuilder
 target/

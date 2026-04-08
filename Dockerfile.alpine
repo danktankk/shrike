@@ -23,7 +23,6 @@ ENV OPENSSL_NO_VENDOR=1
 WORKDIR /app
 COPY Cargo.toml Cargo.lock ./
 COPY src/ ./src/
-COPY migrations/ ./migrations/
 COPY --from=frontend-build /app/frontend/dist ./frontend/dist/
 
 # Stub build.rs so cargo doesn't try to rerun the npm frontend build.
