@@ -96,8 +96,14 @@
     const map = new Map()
     for (const m of list) {
       const raw = (m.item_title || '').trim()
-      const key = normalizeTitle(raw)
-      if (!key) continue
+      // Group by search_term_id when available — the search term IS the game
+      // identity, so every hit for "Borderlands 4" bundles into one card
+      // regardless of release-group / version / repack noise. Fall back to
+      // the normalized title only for orphan matches with no term.
+      const key = m.search_term_id != null
+        ? `term:${m.search_term_id}`
+        : normalizeTitle(raw)
+      if (!key || key === 'term:') continue
       let g = map.get(key)
       if (!g) {
         // artQuery is the clean human search-term name (e.g. "Dune Awakening"),
