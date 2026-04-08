@@ -7,7 +7,7 @@ pub async fn init_pool(database_url: &str) -> Result<SqlitePool> {
     if database_url != ":memory:" && !database_url.starts_with("file:") {
         if let Some(parent) = std::path::Path::new(database_url).parent() {
             if !parent.as_os_str().is_empty() {
-                tokio::fs::create_dir_all(parent).await.ok();
+                tokio::fs::create_dir_all(parent).await?;
             }
         }
     }

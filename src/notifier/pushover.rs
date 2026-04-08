@@ -3,10 +3,6 @@ use anyhow::Result;
 use reqwest::Client;
 use crate::models::SearchTerm;
 use crate::sources::SourceItem;
-use super::discord::fetch_box_art;
-
-const FALLBACK_IMAGE: &str =
-    "https://raw.githubusercontent.com/danktankk/discoprowl/main/assets/no-image.jpg";
 
 pub async fn send(
     http: &Client,
@@ -14,7 +10,7 @@ pub async fn send(
     user_key: &str,
     term: &SearchTerm,
     item: &SourceItem,
-    steamgriddb_key: Option<&str>,
+    image_url: Option<&str>,
 ) -> Result<()> {
     let message = format!(
         "{}\nSearch term: {}\n{}",
@@ -23,18 +19,23 @@ pub async fn send(
         item.url.as_deref().unwrap_or("")
     );
 
-    // Fetch image bytes (fall back to placeholder URL if no key or on error)
-    let image_url = if let Some(key) = steamgriddb_key {
-        fetch_box_art(http, key, &term.query).await
-            .unwrap_or_else(|_| FALLBACK_IMAGE.to_string())
-    } else {
-        FALLBACK_IMAGE.to_string()
-    };
-
-    // Fetch image bytes — if this fails, send without attachment
-    let img_bytes = match http.get(&image_url).send().await {
-        Ok(resp) => resp.bytes().await.ok(),
-        Err(_) => None,
+    // If we have an image URL, try to fetch it; if the fetch fails, send
+    // without attachment rather than erroring the whole notification.
+    let img_bytes = match image_url {
+        Some(url) => match http.get(url).send().await {
+            Ok(resp) => match resp.bytes().await {
+                Ok(b) => Some(b),
+                Err(e) => {
+                    tracing::warn!("Pushover: failed to read box art bytes from {url}: {e}");
+                    None
+                }
+            },
+            Err(e) => {
+                tracing::warn!("Pushover: failed to fetch box art from {url}: {e}");
+                None
+            }
+        },
+        None => None,
     };
 
     let mut form = reqwest::multipart::Form::new()

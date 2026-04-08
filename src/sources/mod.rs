@@ -1,7 +1,7 @@
 // src/sources/mod.rs
 pub mod rss;
 pub mod newznab;
-pub mod torznab;
+pub mod prowlarr;
 
 use async_trait::async_trait;
 use anyhow::Result;
@@ -19,6 +19,22 @@ pub struct SourceItem {
     pub seeders: Option<u32>,
 }
 
+impl SourceItem {
+    /// Builds a synthetic SourceItem used only by notification test handlers.
+    /// Not persisted, never returned from a real fetch.
+    pub fn test_sentinel() -> Self {
+        SourceItem {
+            title: "DiscoProwl Test Notification".into(),
+            url: Some("https://github.com/danktankk/discoprowl".into()),
+            guid: "test-guid".into(),
+            pub_date: Some(Utc::now()),
+            description: Some("This is a test notification from DiscoProwl.".into()),
+            indexer: Some("test".into()),
+            seeders: Some(42u32),
+        }
+    }
+}
+
 #[async_trait]
 pub trait Source: Send + Sync {
     async fn fetch(&self, term: &SearchTerm) -> Result<Vec<SourceItem>>;
@@ -29,27 +45,32 @@ pub trait Source: Send + Sync {
 }
 
 /// Build the correct Source implementation for a DB Source row.
-/// Returns None if the source_type is unknown.
+/// Returns Err with the unknown source_type string if it isn't recognized.
 pub fn build_source(
     source: &crate::models::Source,
     http: reqwest::Client,
-) -> Option<Box<dyn Source>> {
+) -> Result<Box<dyn Source>> {
     match source.source_type.as_str() {
-        "rss" => Some(Box::new(rss::RssSource::new(
+        "rss" => Ok(Box::new(rss::RssSource::new(
             source.url.clone(),
             source.api_key.clone(),
-            http.clone(),
+            http,
         ))),
-        "newznab" => Some(Box::new(newznab::NewznabSource::new(
+        "prowlarr" => Ok(Box::new(prowlarr::ProwlarrSource::new(
             source.url.clone(),
             source.api_key.clone().unwrap_or_default(),
             http,
+            source.categories.clone(),
         ))),
-        "torznab" | "prowlarr" => Some(Box::new(torznab::TorznabSource::new(
-            source.url.clone(),
-            source.api_key.clone().unwrap_or_default(),
-            http,
-        ))),
-        _ => None,
+        "newznab" | "torznab" => {
+            let kind: &'static str = if source.source_type == "newznab" { "newznab" } else { "torznab" };
+            Ok(Box::new(newznab::NzbSource::new(
+                source.url.clone(),
+                source.api_key.clone().unwrap_or_default(),
+                http,
+                kind,
+            )))
+        }
+        other => Err(anyhow::anyhow!("unknown source_type: {other}")),
     }
 }

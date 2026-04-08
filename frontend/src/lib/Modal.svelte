@@ -1,10 +1,17 @@
 <script>
   export let title = ''
   export let onClose = () => {}
+  export let wide = false
 </script>
 
-<div class="overlay" on:click|self={onClose} role="dialog" aria-modal="true">
-  <div class="modal">
+<div
+  class="overlay"
+  on:click|self={onClose}
+  on:keydown={(e) => { if (e.key === 'Escape') onClose() }}
+  role="dialog"
+  aria-modal="true"
+>
+  <div class="modal" class:wide tabindex="-1">
     <div class="modal-header">
       <h3>{title}</h3>
       <button class="close-btn" on:click={onClose} aria-label="Close">✕</button>
@@ -43,9 +50,14 @@
     min-width: 440px;
     max-width: 560px;
     width: 100%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
     box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(249,115,22,0.08);
     animation: slide-up 0.15s ease;
   }
+  .modal.wide { max-width: 900px; }
+  .modal-body { overflow-y: auto; }
 
   @keyframes slide-up {
     from { transform: translateY(12px); opacity: 0; }
@@ -99,5 +111,26 @@
 
   .modal-footer:empty {
     display: none;
+  }
+
+  /* ───────── Responsive ───────── */
+  @media (max-width: 720px) {
+    .overlay { padding: 0.75rem; align-items: flex-start; }
+    .modal,
+    .modal.wide {
+      min-width: 0;
+      max-width: 100%;
+      width: 100%;
+      max-height: calc(100vh - 1.5rem);
+      max-height: calc(100dvh - 1.5rem);
+      border-radius: 10px;
+    }
+    .modal-header { padding: 1rem 1.1rem; }
+    .modal-header h3 { font-size: 1rem; }
+    .modal-body { padding: 1rem 1.1rem; gap: 0.85rem; }
+    .modal-footer {
+      padding: 0.85rem 1.1rem;
+      flex-wrap: wrap;
+    }
   }
 </style>

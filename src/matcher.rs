@@ -1,6 +1,9 @@
 // src/matcher.rs
 use chrono::{DateTime, Utc};
 
+/// Default maximum age (in days) for an item to be considered fresh.
+pub const DEFAULT_MAX_AGE_DAYS: i64 = 30;
+
 /// Returns true if `query` appears as a whole-word match (case-insensitive) in `title`.
 /// A word boundary is a position where the adjacent character is not alphanumeric or underscore.
 pub fn whole_word_match(query: &str, title: &str) -> bool {
@@ -40,10 +43,12 @@ fn is_word_char(c: char) -> bool {
     c.is_alphanumeric() || c == '_'
 }
 
-/// Returns true if the item is within `max_age_days` days old (or has no date).
+/// Returns true if the item is within `max_age_days` days old.
+/// Items without a publish date are rejected — without a date we cannot verify
+/// freshness, and dateless RSS items would otherwise re-notify forever.
 pub fn age_ok(pub_date: Option<DateTime<Utc>>, max_age_days: i64) -> bool {
     match pub_date {
-        None => true,
+        None => false,
         Some(dt) => {
             let age = Utc::now().signed_duration_since(dt).num_days();
             age >= 0 && age <= max_age_days
@@ -57,5 +62,6 @@ pub fn keywords_ok(title: &str, disallowed: &[String]) -> bool {
         return true;
     }
     let lower = title.to_lowercase();
-    !disallowed.iter().any(|kw| lower.contains(kw.to_lowercase().as_str()))
+    // Keywords are pre-lowercased by SearchTerm::disallowed_list().
+    !disallowed.iter().any(|kw| lower.contains(kw.as_str()))
 }
