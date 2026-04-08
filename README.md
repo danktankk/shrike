@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/shrike-banner.jpg/>
+  <img src="assets/shrike-banner.png/>
 </p>
 
 <p align="center">
