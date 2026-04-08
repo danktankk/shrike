@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/danktankk/shrike/main/assets/logo-circular.png" alt="Shrike" height="100"/>
+  <img src="assets/shrike-banner.jpg/>
 </p>
 
 <p align="center">
