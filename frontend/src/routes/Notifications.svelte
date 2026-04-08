@@ -115,8 +115,13 @@
 
   .channels-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
     gap: 1rem;
+  }
+
+  @media (max-width: 480px) {
+    .channel-card { padding: 1rem; }
+    .card-top { flex-wrap: wrap; gap: 0.4rem; }
   }
 
   .channel-card {

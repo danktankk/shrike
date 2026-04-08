@@ -7,6 +7,7 @@ use std::sync::Arc;
 use crate::config::Config;
 use crate::models::SearchTerm;
 use crate::sources::SourceItem;
+use crate::steamgriddb;
 
 pub struct Notifier {
     pub config: Arc<Config>,
@@ -16,6 +17,55 @@ pub struct Notifier {
 impl Notifier {
     pub fn new(config: Arc<Config>, http: reqwest::Client) -> Self {
         Self { config, http }
+    }
+
+    /// Look up a box art URL for the term's query via SteamGridDB.
+    /// Returns `None` when no key is configured, the lookup fails, or
+    /// no match/no grid exists. Callers decide how to handle absence.
+    async fn lookup_box_art(&self, query: &str) -> Option<String> {
+        let key = self.config.steamgriddb_api_key.as_deref()?;
+        match steamgriddb::search_game(&self.http, key, query).await {
+            Ok(Some(g)) => g.grid_url.or(g.hero_url),
+            Ok(None) => None,
+            Err(e) => {
+                tracing::warn!("SteamGridDB lookup failed for '{query}': {e}");
+                None
+            }
+        }
+    }
+
+    /// Send to Discord. Thin wrapper so callers (notify + test_channel) share one path.
+    pub async fn send_discord(
+        &self,
+        webhook_url: &str,
+        term: &SearchTerm,
+        item: &SourceItem,
+        source_name: &str,
+    ) -> anyhow::Result<()> {
+        let image_url = self.lookup_box_art(&term.query).await;
+        discord::send(&self.http, webhook_url, term, item, source_name, image_url.as_deref()).await
+    }
+
+    /// Send to Pushover. Thin wrapper so callers (notify + test_channel) share one path.
+    pub async fn send_pushover(
+        &self,
+        app_token: &str,
+        user_key: &str,
+        term: &SearchTerm,
+        item: &SourceItem,
+    ) -> anyhow::Result<()> {
+        let image_url = self.lookup_box_art(&term.query).await;
+        pushover::send(&self.http, app_token, user_key, term, item, image_url.as_deref()).await
+    }
+
+    /// Send to Apprise. Thin wrapper so callers (notify + test_channel) share one path.
+    pub async fn send_apprise(
+        &self,
+        apprise_url: &str,
+        term: &SearchTerm,
+        item: &SourceItem,
+    ) -> anyhow::Result<()> {
+        apprise::send(&self.http, apprise_url, term, item).await
     }
 
     /// Fire all configured channels for a matched item.
@@ -30,17 +80,14 @@ impl Notifier {
         let mut fired: Vec<&str> = vec![];
 
         if let Some(ref url) = self.config.discord_webhook_url {
-            match discord::send(
-                &self.http, url, term, item, source_name,
-                self.config.steamgriddb_api_key.as_deref(),
-            ).await {
+            match self.send_discord(url, term, item, source_name).await {
                 Ok(_) => { fired.push("discord"); }
                 Err(e) => { tracing::warn!("Discord notify failed: {e}"); }
             }
         }
 
         if let Some(ref url) = self.config.apprise_url {
-            match apprise::send(&self.http, url, term, item).await {
+            match self.send_apprise(url, term, item).await {
                 Ok(_) => { fired.push("apprise"); }
                 Err(e) => { tracing::warn!("Apprise notify failed: {e}"); }
             }
@@ -50,10 +97,7 @@ impl Notifier {
             self.config.pushover_app_token.as_deref(),
             self.config.pushover_user_key.as_deref(),
         ) {
-            match pushover::send(
-                &self.http, token, key, term, item,
-                self.config.steamgriddb_api_key.as_deref(),
-            ).await {
+            match self.send_pushover(token, key, term, item).await {
                 Ok(_) => { fired.push("pushover"); }
                 Err(e) => { tracing::warn!("Pushover notify failed: {e}"); }
             }

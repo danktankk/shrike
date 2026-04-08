@@ -11,7 +11,7 @@ pub async fn send(
     item: &SourceItem,
 ) -> Result<()> {
     let body = format!(
-        "**{}**\nSearch term: {}\n{}",
+        "{}\nSearch term: {}\n{}",
         item.title,
         term.name,
         item.url.as_deref().unwrap_or("(no URL)")

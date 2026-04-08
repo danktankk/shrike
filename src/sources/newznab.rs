@@ -7,37 +7,47 @@ use quick_xml::Reader;
 use quick_xml::events::Event;
 use chrono::Utc;
 
-pub struct NewznabSource {
+/// Unified source for Newznab/Torznab/Prowlarr APIs.
+/// All three speak the same `t=search&q=...&apikey=...` protocol and return
+/// the same Newznab-style XML; only the `source_type` label differs.
+pub struct NzbSource {
     pub url: String,
     pub api_key: String,
     pub http: reqwest::Client,
+    pub source_type: &'static str,
 }
 
-impl NewznabSource {
-    pub fn new(url: String, api_key: String, http: reqwest::Client) -> Self {
-        Self { url, api_key, http }
+impl NzbSource {
+    pub fn new(url: String, api_key: String, http: reqwest::Client, source_type: &'static str) -> Self {
+        Self { url, api_key, http, source_type }
     }
 }
 
 #[async_trait]
-impl Source for NewznabSource {
+impl Source for NzbSource {
     async fn fetch(&self, term: &SearchTerm) -> Result<Vec<SourceItem>> {
         let query_url = format!(
             "{}/api?t=search&q={}&apikey={}",
             self.url.trim_end_matches('/'),
-            urlencode(&term.query),
+            urlencoding::encode(&term.query),
             self.api_key
         );
         let body = self.http.get(&query_url).send().await?.text().await?;
         parse_newznab_xml(&body)
     }
 
-    fn source_type(&self) -> &'static str { "newznab" }
+    fn source_type(&self) -> &'static str { self.source_type }
 }
 
-/// URL-encode a query string (percent-encoding for query parameters).
-pub(crate) fn urlencode(s: &str) -> String {
-    urlencoding::encode(s).into_owned()
+/// Deterministic 64-bit hash of a string, formatted as hex.
+/// Used to synthesize a stable guid for items missing one, so that
+/// the same item is not re-inserted on every poll. djb2 variant.
+pub(crate) fn stable_title_hash(s: &str) -> String {
+    let mut h: u64 = 5381;
+    for b in s.as_bytes() {
+        h = h.wrapping_mul(33).wrapping_add(*b as u64);
+    }
+    format!("{:016x}", h)
 }
 
 /// Parse a Newznab/Torznab XML RSS response into SourceItems.
@@ -128,7 +138,7 @@ pub(crate) fn parse_newznab_xml(xml: &str) -> Result<Vec<SourceItem>> {
                             title: cur_title.clone(),
                             url: cur_url.clone(),
                             guid: if cur_guid.is_empty() {
-                                format!("{}:{}", cur_title, chrono::Utc::now().timestamp())
+                                stable_title_hash(&cur_title)
                             } else {
                                 cur_guid.clone()
                             },
@@ -189,7 +199,7 @@ mod tests {
             .mount(&server)
             .await;
 
-        let source = NewznabSource::new(server.uri(), "testkey123".into(), reqwest::Client::new());
+        let source = NzbSource::new(server.uri(), "testkey123".into(), reqwest::Client::new(), "newznab");
         let term = crate::models::SearchTerm {
             id: 1, name: "Elden Ring".into(), query: "Elden Ring".into(),
             enabled: true, max_age_days: Some(30), disallowed_keywords: None,
@@ -228,7 +238,7 @@ mod tests {
             .mount(&server)
             .await;
 
-        let source = NewznabSource::new(server.uri(), "key".into(), reqwest::Client::new());
+        let source = NzbSource::new(server.uri(), "key".into(), reqwest::Client::new(), "newznab");
         let term = crate::models::SearchTerm {
             id: 1, name: "Test".into(), query: "Elden Ring".into(),
             enabled: true, max_age_days: None, disallowed_keywords: None,
@@ -237,5 +247,50 @@ mod tests {
         // Should succeed — mock matched on the raw query param value
         let result = source.fetch(&term).await;
         assert!(result.is_ok());
+    }
+
+    const TORZNAB_XML: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:torznab="http://torznab.com/schemas/2015/feed">
+  <channel>
+    <item>
+      <title>Hollow Knight v1.5 PC</title>
+      <link>https://prowlarr.example.com/dl/hollow-knight.torrent</link>
+      <guid>torrent-guid-abc</guid>
+      <pubDate>Sat, 04 Apr 2026 15:00:00 +0000</pubDate>
+      <torznab:attr name="seeders" value="99"/>
+    </item>
+  </channel>
+</rss>"#;
+
+    #[tokio::test]
+    async fn fetches_torznab_via_nzb_source() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/api"))
+            .respond_with(ResponseTemplate::new(200).set_body_raw(TORZNAB_XML, "application/rss+xml"))
+            .mount(&server)
+            .await;
+
+        let source = NzbSource::new(server.uri(), "key123".into(), reqwest::Client::new(), "torznab");
+        assert_eq!(source.source_type(), "torznab");
+        let term = crate::models::SearchTerm {
+            id: 1, name: "HK".into(), query: "Hollow Knight".into(),
+            enabled: true, max_age_days: None, disallowed_keywords: None,
+            created_at: chrono::Utc::now(),
+        };
+
+        let items = source.fetch(&term).await.unwrap();
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].title, "Hollow Knight v1.5 PC");
+        assert_eq!(items[0].guid, "torrent-guid-abc");
+        assert_eq!(items[0].seeders, Some(99));
+    }
+
+    #[test]
+    fn stable_title_hash_is_deterministic() {
+        let a = stable_title_hash("Elden Ring v1.10 REPACK");
+        let b = stable_title_hash("Elden Ring v1.10 REPACK");
+        assert_eq!(a, b);
+        assert_ne!(a, stable_title_hash("Different Title"));
     }
 }

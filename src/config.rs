@@ -4,14 +4,12 @@ use std::env;
 pub struct Config {
     pub database_url: String,
     pub bind_addr: String,
-    pub commafeed_url: Option<String>,
-    pub commafeed_user: Option<String>,
-    pub commafeed_pass: Option<String>,
     pub discord_webhook_url: Option<String>,
     pub apprise_url: Option<String>,
     pub pushover_app_token: Option<String>,
     pub pushover_user_key: Option<String>,
     pub steamgriddb_api_key: Option<String>,
+    pub scheduler_tick_secs: u64,
 }
 
 impl Config {
@@ -22,14 +20,15 @@ impl Config {
         Config {
             database_url,
             bind_addr: env::var("BIND_ADDR").unwrap_or_else(|_| "0.0.0.0:3079".to_string()),
-            commafeed_url: env::var("COMMAFEED_URL").ok(),
-            commafeed_user: env::var("COMMAFEED_USER").ok(),
-            commafeed_pass: env::var("COMMAFEED_PASS").ok(),
             discord_webhook_url: env::var("DISCORD_WEBHOOK_URL").ok(),
             apprise_url: env::var("APPRISE_URL").ok(),
             pushover_app_token: env::var("PUSHOVER_APP_TOKEN").ok(),
             pushover_user_key: env::var("PUSHOVER_USER_KEY").ok(),
             steamgriddb_api_key: env::var("STEAMGRIDDB_API_KEY").ok(),
+            scheduler_tick_secs: env::var("DISCOPROWL_SCHEDULER_TICK_SECS")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(60),
         }
     }
 }

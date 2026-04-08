@@ -25,8 +25,6 @@
       </li>
     {/each}
   </ul>
-
-  <div class="nav-footer">v2.0.0</div>
 </nav>
 
 <style>
@@ -116,12 +114,50 @@
     flex-shrink: 0;
   }
 
-  .nav-footer {
-    padding: 1rem 1.5rem 0;
-    font-family: var(--font-mono);
-    font-size: 0.7rem;
-    color: var(--text-dim);
-    border-top: 1px solid var(--border);
-    margin-top: auto;
+  /* ───────── Responsive ───────── */
+  @media (max-width: 720px) {
+    nav {
+      width: 100%;
+      min-width: 0;
+      min-height: 0;
+      height: auto;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      padding: 0.6rem 0.85rem 0.55rem;
+      border-right: none;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+      backdrop-filter: blur(8px);
+      background: rgba(14, 14, 28, 0.92);
+    }
+    .logo {
+      padding: 0 0.25rem 0.5rem;
+      margin-bottom: 0;
+      border-bottom: none;
+    }
+    ul {
+      padding: 0;
+      flex-direction: row;
+      gap: 0.35rem;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    ul::-webkit-scrollbar { display: none; }
+    li { flex: 1 0 auto; }
+    li a {
+      padding: 0.7rem 0.85rem;
+      font-size: 0.8rem;
+      justify-content: center;
+      white-space: nowrap;
+      min-height: 44px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    li a { padding: 0.7rem 0.6rem; gap: 0.4rem; font-size: 0.74rem; }
+    .logo-text { font-size: 1rem; }
   }
 </style>

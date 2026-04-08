@@ -4,9 +4,12 @@
   import SearchTerms from './routes/SearchTerms.svelte'
   import Sources from './routes/Sources.svelte'
   import Notifications from './routes/Notifications.svelte'
+  import Match from './routes/Match.svelte'
 
   let route = window.location.hash.slice(1) || '/'
   window.addEventListener('hashchange', () => { route = window.location.hash.slice(1) || '/' })
+
+  $: matchIdMatch = route.match(/^\/match\/(\d+)$/)
 </script>
 
 <div class="app">
@@ -20,6 +23,10 @@
       <Sources />
     {:else if route === '/notifications'}
       <Notifications />
+    {:else if matchIdMatch}
+      <Match id={Number(matchIdMatch[1])} />
+    {:else}
+      <div class="empty-state">Page not found</div>
     {/if}
   </main>
 </div>
@@ -281,5 +288,97 @@
     padding: 2rem 2.5rem;
     min-width: 0;
     background: var(--bg);
+  }
+
+  /* ───────── Responsive ───────── */
+  @media (max-width: 720px) {
+    .app { flex-direction: column; }
+    main { padding: 1rem 1rem 2.5rem; }
+
+    :global(.page) { gap: 1.1rem; }
+    :global(.page-header) {
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      padding-bottom: 0.9rem;
+    }
+    :global(.page-title) { font-size: 1.3rem; }
+
+    /* Data tables → card mode. Requires <td data-label="…"> in routes. */
+    :global(.table-wrap) { border-radius: 10px; border: none; background: transparent; }
+    :global(.data-table),
+    :global(.data-table thead),
+    :global(.data-table tbody),
+    :global(.data-table tr),
+    :global(.data-table td) { display: block; width: 100%; }
+    :global(.data-table thead) {
+      position: absolute;
+      width: 1px; height: 1px;
+      clip: rect(0 0 0 0);
+      overflow: hidden;
+    }
+    :global(.data-table tbody tr) {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-bottom: 0.7rem;
+      padding: 0.35rem 0.25rem;
+    }
+    /* Continuation rows (error / success / test) visually glue to their
+       parent source card instead of floating as a separate block. */
+    :global(.data-table tbody tr.health-row),
+    :global(.data-table tbody tr.test-row) {
+      margin-top: -0.75rem;
+      border-top: none;
+      border-top-left-radius: 0;
+      border-top-right-radius: 0;
+    }
+    :global(.data-table tbody tr.has-error) {
+      margin-bottom: 0;
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+    :global(.data-table tbody tr:hover td) { background: transparent; }
+    :global(.data-table td) {
+      border-bottom: 1px solid var(--border);
+      padding: 0.55rem 0.85rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      text-align: right;
+    }
+    :global(.data-table td:last-child) { border-bottom: none; }
+    :global(.data-table td::before) {
+      content: attr(data-label);
+      font-family: var(--font-body);
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--text-muted);
+      text-align: left;
+      flex-shrink: 0;
+    }
+    /* Empty label → drop the pseudo entirely (no phantom column) */
+    :global(.data-table td:not([data-label])::before),
+    :global(.data-table td[data-label=""]::before) { content: none; }
+    /* Cells that span the whole card (error/test rows) */
+    :global(.data-table td[colspan]) {
+      justify-content: flex-start;
+      text-align: left;
+    }
+    :global(.data-table td[colspan]::before) { content: none; }
+    /* Action row: let buttons flow */
+    :global(.data-table .actions-cell) {
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 0.3rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    main { padding: 0.85rem 0.75rem 2rem; }
+    :global(.page-title) { font-size: 1.15rem; }
+    :global(.btn) { padding: 0.5rem 0.85rem; font-size: 0.82rem; }
   }
 </style>

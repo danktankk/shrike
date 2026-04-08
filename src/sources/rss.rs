@@ -31,12 +31,14 @@ impl Source for RssSource {
         let resp = req.send().await?;
         let status = resp.status();
         let body = resp.bytes().await?;
-        if let Err(e) = parser::parse(body.as_ref()) {
-            let preview = String::from_utf8_lossy(&body[..body.len().min(300)]);
-            tracing::warn!("RSS parse failed (HTTP {status}): {e} — body preview: {preview}");
-            return Err(e.into());
-        }
-        let feed = parser::parse(body.as_ref())?;
+        let feed = match parser::parse(body.as_ref()) {
+            Ok(f) => f,
+            Err(e) => {
+                let preview = String::from_utf8_lossy(&body[..body.len().min(300)]);
+                tracing::warn!("RSS parse failed (HTTP {status}): {e} — body preview: {preview}");
+                return Err(e.into());
+            }
+        };
 
         let items = feed.entries.into_iter().map(|entry| {
             let title = entry.title
