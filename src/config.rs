@@ -25,7 +25,8 @@ impl Config {
             pushover_app_token: env::var("PUSHOVER_APP_TOKEN").ok(),
             pushover_user_key: env::var("PUSHOVER_USER_KEY").ok(),
             steamgriddb_api_key: env::var("STEAMGRIDDB_API_KEY").ok(),
-            scheduler_tick_secs: env::var("DISCOPROWL_SCHEDULER_TICK_SECS")
+            scheduler_tick_secs: env::var("SHRIKE_SCHEDULER_TICK_SECS")
+                .or_else(|_| env::var("DISCOPROWL_SCHEDULER_TICK_SECS"))
                 .ok()
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(60),

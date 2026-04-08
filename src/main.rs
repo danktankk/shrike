@@ -35,12 +35,12 @@ async fn main() -> anyhow::Result<()> {
     // get full TLS verification — never relaxed.
     let internal_insecure = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(30))
-        .user_agent("discoprowl/2.0")
+        .user_agent("shrike/2.2")
         .danger_accept_invalid_certs(true)
         .build()?;
     let external_strict = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(30))
-        .user_agent("discoprowl/2.0")
+        .user_agent("shrike/2.2")
         .build()?;
     let http = api::HttpClients { internal_insecure, external_strict };
 

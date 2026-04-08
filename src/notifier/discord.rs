@@ -41,7 +41,7 @@ pub async fn send(
     }
 
     let payload = json!({
-        "username": "DiscoProwl",
+        "username": "Shrike",
         "embeds": [embed],
     });
 

@@ -1,5 +1,5 @@
 // tests/matcher_tests.rs
-use discoprowl::matcher::{age_ok, keywords_ok, whole_word_match};
+use shrike::matcher::{age_ok, keywords_ok, whole_word_match};
 use chrono::Utc;
 
 #[test]

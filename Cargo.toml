@@ -1,14 +1,14 @@
 [package]
-name = "discoprowl"
-version = "2.1.1"
+name = "shrike"
+version = "2.2.0"
 edition = "2021"
 
 [[bin]]
-name = "discoprowl"
+name = "shrike"
 path = "src/main.rs"
 
 [lib]
-name = "discoprowl"
+name = "shrike"
 path = "src/lib.rs"
 
 [dependencies]

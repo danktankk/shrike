@@ -36,8 +36,8 @@ FROM alpine:3.20
 RUN apk add --no-cache ca-certificates tini
 
 WORKDIR /app
-COPY --from=rust-build /app/target/release/discoprowl ./discoprowl
+COPY --from=rust-build /app/target/release/shrike ./shrike
 
 EXPOSE 3079
 ENTRYPOINT ["/sbin/tini", "--"]
-CMD ["./discoprowl"]
+CMD ["./shrike"]

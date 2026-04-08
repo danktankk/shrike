@@ -26,7 +26,7 @@ FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-COPY --from=rust-build /app/target/release/discoprowl ./discoprowl
+COPY --from=rust-build /app/target/release/shrike ./shrike
 
 EXPOSE 3079
-CMD ["./discoprowl"]
+CMD ["./shrike"]

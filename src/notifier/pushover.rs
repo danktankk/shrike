@@ -41,7 +41,7 @@ pub async fn send(
     let mut form = reqwest::multipart::Form::new()
         .text("token", app_token.to_string())
         .text("user", user_key.to_string())
-        .text("title", format!("DiscoProwl: {}", term.name))
+        .text("title", format!("Shrike: {}", term.name))
         .text("message", message);
 
     if let Some(img) = img_bytes {

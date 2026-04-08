@@ -20,7 +20,7 @@ pub async fn send(
     let resp = http
         .post(apprise_url)
         .json(&serde_json::json!({
-            "title": format!("DiscoProwl: {}", term.name),
+            "title": format!("Shrike: {}", term.name),
             "body": body,
         }))
         .send()
