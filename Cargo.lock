@@ -418,8 +418,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "discoprowl"
-version = "2.1.1"
+name = "shrike"
+version = "2.2.0"
 dependencies = [
  "anyhow",
  "async-trait",

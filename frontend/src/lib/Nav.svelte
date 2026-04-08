@@ -12,7 +12,7 @@
 <nav>
   <div class="logo">
     <span class="logo-icon">◈</span>
-    <span class="logo-text">Disco<em>Prowl</em></span>
+    <span class="logo-text">Sh<em>rike</em></span>
   </div>
 
   <ul>

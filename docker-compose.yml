@@ -3,8 +3,8 @@ networks:
     external: true
 
 services:
-  discoprowl:
-    image: ghcr.io/danktankk/discoprowl:latest
+  shrike:
+    image: ghcr.io/danktankk/shrike:latest
     ports:
       - "3079:3079"
     volumes:
@@ -12,7 +12,7 @@ services:
     networks:
       - proxy
     environment:
-      DATABASE_URL: /data/discoprowl.db
+      DATABASE_URL: /data/shrike.db
       BIND_ADDR: 0.0.0.0:3079
       DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL}
       APPRISE_URL: ${APPRISE_URL:-}

@@ -24,11 +24,11 @@ impl SourceItem {
     /// Not persisted, never returned from a real fetch.
     pub fn test_sentinel() -> Self {
         SourceItem {
-            title: "DiscoProwl Test Notification".into(),
-            url: Some("https://github.com/danktankk/discoprowl".into()),
+            title: "Shrike Test Notification".into(),
+            url: Some("https://github.com/danktankk/shrike".into()),
             guid: "test-guid".into(),
             pub_date: Some(Utc::now()),
-            description: Some("This is a test notification from DiscoProwl.".into()),
+            description: Some("This is a test notification from Shrike.".into()),
             indexer: Some("test".into()),
             seeders: Some(42u32),
         }

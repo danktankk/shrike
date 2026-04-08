@@ -2,7 +2,7 @@ use axum::body::Body;
 use axum::http::{Request, StatusCode};
 use tower::ServiceExt;
 use std::sync::Arc;
-use discoprowl::{api::{AppState, router}, config::Config, db::init_pool, notifier::Notifier};
+use shrike::{api::{AppState, router}, config::Config, db::init_pool, notifier::Notifier};
 
 async fn test_app() -> axum::Router {
     std::env::set_var("DATABASE_URL", "sqlite::memory:");

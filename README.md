@@ -1,6 +1,6 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/danktankk/discoprowl/main/assets/logo-circular.png" alt="DiscoProwl Icon" height="100" style="vertical-align: middle;"/>
-  <img src="https://raw.githubusercontent.com/danktankk/discoprowl/main/assets/logo-namer.png" alt="DiscoProwl Text" height="65" style="vertical-align: middle; margin-left: 10px;"/>
+  <img src="https://raw.githubusercontent.com/danktankk/shrike/main/assets/logo-circular.png" alt="Shrike Icon" height="100" style="vertical-align: middle;"/>
+  <img src="https://raw.githubusercontent.com/danktankk/shrike/main/assets/logo-namer.png" alt="Shrike Text" height="65" style="vertical-align: middle; margin-left: 10px;"/>
 </p>
 
 <p align="center">
@@ -9,11 +9,11 @@
 
 ---
 
-## What Is DiscoProwl?
+## What Is Shrike?
 
-Have you ever found yourself watching upcoming AAA game title videos and made a mental list of games you *had* to have — only to completely forget about them until someone brought them up in conversation? Yeah, me neither. But just in case, DiscoProwl has you covered.
+Have you ever found yourself watching upcoming AAA game title videos and made a mental list of games you *had* to have — only to completely forget about them until someone brought them up in conversation? Yeah, me neither. But just in case, Shrike has you covered.
 
-**DiscoProwl** watches configured sources for game titles (or anything, really) you care about and notifies you the moment they appear. Set it and forget it.
+**Shrike** watches configured sources for game titles (or anything, really) you care about and notifies you the moment they appear. Set it and forget it.
 
 **v2.0 is a full rewrite in Rust.** It ships as a single binary with an embedded web UI — no more managing search terms via env vars. Add sources, define search terms, and monitor match history all from the browser.
 
@@ -34,7 +34,7 @@ Have you ever found yourself watching upcoming AAA game title videos and made a 
 ## Quick Start
 
 ```bash
-docker pull ghcr.io/danktankk/discoprowl:latest
+docker pull ghcr.io/danktankk/shrike:latest
 ```
 
 Multi-arch image — supports `linux/amd64` and `linux/arm64`.
@@ -45,14 +45,14 @@ Multi-arch image — supports `linux/amd64` and `linux/arm64`.
 
 ```yaml
 services:
-  discoprowl:
-    image: ghcr.io/danktankk/discoprowl:latest
+  shrike:
+    image: ghcr.io/danktankk/shrike:latest
     ports:
       - "3079:3079"
     volumes:
       - ./data:/data
     environment:
-      DATABASE_URL: /data/discoprowl.db
+      DATABASE_URL: /data/shrike.db
       BIND_ADDR: 0.0.0.0:3079
       COMMAFEED_URL: http://your-commafeed:8882
       COMMAFEED_USER: CC
@@ -88,7 +88,7 @@ At least one must be configured:
 
 | Variable | Description |
 |----------|-------------|
-| `DATABASE_URL` | Path to SQLite file — e.g. `/data/discoprowl.db` |
+| `DATABASE_URL` | Path to SQLite file — e.g. `/data/shrike.db` |
 
 ### Optional
 
