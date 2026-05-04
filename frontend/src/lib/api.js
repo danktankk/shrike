@@ -52,4 +52,9 @@ export const api = {
   scan: () => request('POST', '/scan'),
   // GET /api/art?q=<title> → { found, game: GameRef|null }
   art: (q) => request('GET', `/art?q=${encodeURIComponent(q)}`),
+  blocklist: {
+    list: () => request('GET', '/blocklist'),
+    create: (pattern) => request('POST', '/blocklist', { pattern }),
+    delete: (id) => request('DELETE', `/blocklist/${id}`),
+  },
 }

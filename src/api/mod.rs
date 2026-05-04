@@ -6,6 +6,7 @@ pub mod matches;
 pub mod notifications;
 pub mod scan;
 pub mod art;
+pub mod blocklist;
 
 pub use error::AppError;
 
@@ -62,6 +63,9 @@ pub fn router(state: AppState) -> Router {
         .route("/api/match/{id}",       get(art::get_match))
         // Art (SteamGridDB proxy)
         .route("/api/art",              get(art::get_art))
+        // SGDB / Steam title blocklist
+        .route("/api/blocklist",        get(blocklist::list).post(blocklist::create))
+        .route("/api/blocklist/{id}",   axum::routing::delete(blocklist::delete_one))
         // Scan
         .route("/api/scan", post(scan::scan_now))
         // Notifications

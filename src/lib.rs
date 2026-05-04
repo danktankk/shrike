@@ -3,6 +3,7 @@ pub mod config;
 pub mod db;
 pub mod models;
 pub mod matcher;
+pub mod blocklist;
 pub mod scheduler;
 pub mod sources;
 pub mod notifier;

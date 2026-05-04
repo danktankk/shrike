@@ -117,6 +117,8 @@ mod tests {
             enabled: true,
             max_age_days: Some(30),
             disallowed_keywords: None,
+            steamgriddb_id: None,
+            steam_appid: None,
             created_at: chrono::Utc::now(),
         };
 
@@ -147,7 +149,9 @@ mod tests {
         let source = RssSource::new(format!("{}/empty.xml", server.uri()), None, reqwest::Client::new());
         let term = crate::models::SearchTerm {
             id: 1, name: "T".into(), query: "t".into(), enabled: true,
-            max_age_days: None, disallowed_keywords: None, created_at: chrono::Utc::now(),
+            max_age_days: None, disallowed_keywords: None,
+            steamgriddb_id: None, steam_appid: None,
+            created_at: chrono::Utc::now(),
         };
 
         let items = source.fetch(&term).await.unwrap();

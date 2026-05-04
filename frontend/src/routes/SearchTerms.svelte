@@ -14,8 +14,19 @@
   const scanTimers = new Map()
   let destroyed = false
 
-  const empty = () => ({ name: '', query: '', max_age_days: 30, disallowed_keywords: '', enabled: true })
+  const empty = () => ({
+    name: '', query: '', max_age_days: 30, disallowed_keywords: '', enabled: true,
+    steamgriddb_id: '', steam_appid: '',
+  })
   let form = empty()
+
+  // Coerce the optional id fields ('' | string | number) → null | number for the API.
+  // Empty / non-numeric strings clear the override.
+  function toIdOrNull(v) {
+    if (v === '' || v === null || v === undefined) return null
+    const n = typeof v === 'number' ? v : Number(String(v).trim())
+    return Number.isFinite(n) && n > 0 ? n : null
+  }
 
   onMount(load)
   onDestroy(() => {
@@ -30,21 +41,32 @@
   }
 
   function openNew()  { editing = null; form = empty(); showModal = true }
-  function openEdit(t){ editing = t; form = { ...t, disallowed_keywords: t.disallowed_keywords ?? '' }; showModal = true }
+  function openEdit(t){
+    editing = t
+    form = {
+      ...t,
+      disallowed_keywords: t.disallowed_keywords ?? '',
+      steamgriddb_id: t.steamgriddb_id ?? '',
+      steam_appid: t.steam_appid ?? '',
+    }
+    showModal = true
+  }
 
   async function save() {
     try {
+      const payload = {
+        name: form.name,
+        query: form.query,
+        enabled: form.enabled,
+        max_age_days: form.max_age_days,
+        disallowed_keywords: form.disallowed_keywords,
+        steamgriddb_id: toIdOrNull(form.steamgriddb_id),
+        steam_appid: toIdOrNull(form.steam_appid),
+      }
       if (editing) {
-        const payload = {
-          name: form.name,
-          query: form.query,
-          enabled: form.enabled,
-          max_age_days: form.max_age_days,
-          disallowed_keywords: form.disallowed_keywords,
-        }
         await api.searchTerms.update(editing.id, payload)
       } else {
-        await api.searchTerms.create(form)
+        await api.searchTerms.create(payload)
       }
       showModal = false
       await load()
@@ -164,6 +186,12 @@
     </FormField>
     <FormField label="Blocked Keywords" hint="Comma-separated, items containing these are skipped">
       <input bind:value={form.disallowed_keywords} placeholder="trainer,crack,repack" />
+    </FormField>
+    <FormField label="SteamGridDB ID" hint="Optional pin — bypasses autocomplete. Find at steamgriddb.com/game/<id>.">
+      <input type="number" bind:value={form.steamgriddb_id} min="1" placeholder="(auto)" />
+    </FormField>
+    <FormField label="Steam AppID" hint="Optional pin — bypasses storesearch. Find in the Steam store URL: store.steampowered.com/app/<id>.">
+      <input type="number" bind:value={form.steam_appid} min="1" placeholder="(auto)" />
     </FormField>
     <FormField label="Enabled">
       <input type="checkbox" class="toggle" bind:checked={form.enabled} />

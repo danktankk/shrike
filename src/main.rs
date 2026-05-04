@@ -3,6 +3,7 @@ mod config;
 mod db;
 mod models;
 mod matcher;
+mod blocklist;
 mod scheduler;
 mod sources;
 mod notifier;
@@ -35,18 +36,19 @@ async fn main() -> anyhow::Result<()> {
     // get full TLS verification — never relaxed.
     let internal_insecure = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(30))
-        .user_agent("shrike/2.2")
+        .user_agent(concat!("shrike/", env!("CARGO_PKG_VERSION")))
         .danger_accept_invalid_certs(true)
         .build()?;
     let external_strict = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(30))
-        .user_agent("shrike/2.2")
+        .user_agent(concat!("shrike/", env!("CARGO_PKG_VERSION")))
         .build()?;
     let http = api::HttpClients { internal_insecure, external_strict };
 
     let notifier = Arc::new(notifier::Notifier::new(
         config.clone(),
         http.external_strict.clone(),
+        pool.clone(),
     ));
 
     // Spawn background scheduler — scheduler only drives source fetches,

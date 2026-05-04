@@ -203,6 +203,7 @@ mod tests {
         let term = crate::models::SearchTerm {
             id: 1, name: "Elden Ring".into(), query: "Elden Ring".into(),
             enabled: true, max_age_days: Some(30), disallowed_keywords: None,
+            steamgriddb_id: None, steam_appid: None,
             created_at: chrono::Utc::now(),
         };
 
@@ -242,6 +243,7 @@ mod tests {
         let term = crate::models::SearchTerm {
             id: 1, name: "Test".into(), query: "Elden Ring".into(),
             enabled: true, max_age_days: None, disallowed_keywords: None,
+            steamgriddb_id: None, steam_appid: None,
             created_at: chrono::Utc::now(),
         };
         // Should succeed — mock matched on the raw query param value
@@ -276,6 +278,7 @@ mod tests {
         let term = crate::models::SearchTerm {
             id: 1, name: "HK".into(), query: "Hollow Knight".into(),
             enabled: true, max_age_days: None, disallowed_keywords: None,
+            steamgriddb_id: None, steam_appid: None,
             created_at: chrono::Utc::now(),
         };
 

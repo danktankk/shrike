@@ -4,6 +4,7 @@
   import SearchTerms from './routes/SearchTerms.svelte'
   import Sources from './routes/Sources.svelte'
   import Notifications from './routes/Notifications.svelte'
+  import Blocklist from './routes/Blocklist.svelte'
   import Match from './routes/Match.svelte'
 
   let route = window.location.hash.slice(1) || '/'
@@ -23,6 +24,8 @@
       <Sources />
     {:else if route === '/notifications'}
       <Notifications />
+    {:else if route === '/blocklist'}
+      <Blocklist />
     {:else if matchIdMatch}
       <Match id={Number(matchIdMatch[1])} />
     {:else}

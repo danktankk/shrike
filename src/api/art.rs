@@ -33,9 +33,9 @@ pub struct ArtResponse {
 /// GET /api/art?q=<title>
 ///
 /// SGDB-only thumbnail lookup. Consults the server-side cache first (1h TTL,
-/// keyed by lowercased title); on miss, queries SteamGridDB and caches the
-/// result (including negatives). Never returns a fallback URL — callers
-/// render a placeholder when `game` is null.
+/// keyed by lowercased title); on miss, queries SteamGridDB with the global
+/// blocklist applied and caches the result (including negatives). Never
+/// returns a fallback URL — callers render a placeholder when `game` is null.
 pub async fn get_art(
     State(state): State<AppState>,
     Query(params): Query<ArtQuery>,
@@ -53,7 +53,15 @@ pub async fn get_art(
         return Ok(Json(ArtResponse { game: None }));
     };
 
-    let game = match steamgriddb::search_game(&state.http.external_strict, key, &params.q).await {
+    let blocklist = crate::blocklist::load(&state.pool).await.unwrap_or_default();
+    let game = match steamgriddb::search_game_filtered(
+        &state.http.external_strict,
+        key,
+        &params.q,
+        &blocklist,
+    )
+    .await
+    {
         Ok(g) => g,
         Err(e) => {
             tracing::warn!("SteamGridDB search failed for '{}': {e}", params.q);
@@ -134,22 +142,36 @@ pub async fn get_match(
         .fetch_one(&state.pool)
         .await?;
 
-    // 1. SGDB art by the search term's query (cleanest signal we have).
-    let art = resolve_art(&state, &search_term.query).await;
+    // 1. SGDB art. If the term has a `steamgriddb_id` override, use it
+    //    directly (autocomplete is bypassed). Otherwise run autocomplete
+    //    with the blocklist applied.
+    let art = resolve_art(&state, &search_term).await;
 
-    // 2. Steam enrichment: prefer SGDB's cleaned name, fall back to the raw
-    //    item_title. Steam's storesearch is forgiving enough to resolve the
-    //    latter most of the time.
-    let enrich_title = art
-        .as_ref()
-        .map(|g| g.name.as_str())
-        .unwrap_or(&match_row.item_title);
-    let enriched = enrichment::enrich(
-        &state.http.external_strict,
-        &state.enrichment_cache,
-        enrich_title,
-    )
-    .await;
+    // 2. Steam enrichment. If the term has a `steam_appid` override, use it
+    //    directly. Otherwise prefer SGDB's cleaned name, fall back to the
+    //    raw item_title — Steam's storesearch is forgiving enough to
+    //    resolve the latter most of the time.
+    let enriched = if let Some(appid) = search_term.steam_appid {
+        enrichment::enrich_by_appid(
+            &state.http.external_strict,
+            &state.enrichment_cache,
+            appid as u64,
+        )
+        .await
+    } else {
+        let enrich_title = art
+            .as_ref()
+            .map(|g| g.name.as_str())
+            .unwrap_or(&match_row.item_title);
+        let blocklist = crate::blocklist::load(&state.pool).await.unwrap_or_default();
+        enrichment::enrich_filtered(
+            &state.http.external_strict,
+            &state.enrichment_cache,
+            enrich_title,
+            &blocklist,
+        )
+        .await
+    };
 
     let (info, news) = split_enriched(enriched);
 
@@ -167,21 +189,60 @@ pub async fn get_match(
     }))
 }
 
-/// Best-effort SGDB search. Missing key, HTTP error, or empty hits all
-/// degrade to `None` with a warn-level log. Uses the shared `art_cache`.
-async fn resolve_art(state: &AppState, query: &str) -> Option<GameRef> {
-    if let Some(cached) = state.art_cache.get(query) {
+/// Best-effort SGDB resolution honoring per-term overrides + global blocklist.
+///
+/// - When `term.steamgriddb_id` is set, fetches art directly for that id and
+///   caches under a synthetic `sgdb:<id>` key (separate keyspace so a future
+///   query-string with the same name doesn't collide).
+/// - Otherwise queries autocomplete with the blocklist applied and caches
+///   under the term's `query` (preserves the prior cache layout).
+///
+/// Missing key, HTTP error, or empty hits all degrade to `None` with a
+/// warn-level log.
+async fn resolve_art(state: &AppState, term: &SearchTerm) -> Option<GameRef> {
+    let key = state.config.steamgriddb_api_key.as_deref()?;
+
+    if let Some(id) = term.steamgriddb_id {
+        let cache_key = format!("sgdb:{id}");
+        if let Some(cached) = state.art_cache.get(&cache_key) {
+            return cached;
+        }
+        let game = match steamgriddb::fetch_game_by_id(
+            &state.http.external_strict,
+            key,
+            id as u64,
+        )
+        .await
+        {
+            Ok(g) => g,
+            Err(e) => {
+                tracing::warn!("SGDB fetch by id={id} failed: {e}");
+                None
+            }
+        };
+        state.art_cache.put(&cache_key, game.clone());
+        return game;
+    }
+
+    if let Some(cached) = state.art_cache.get(&term.query) {
         return cached;
     }
-    let key = state.config.steamgriddb_api_key.as_deref()?;
-    let game = match steamgriddb::search_game(&state.http.external_strict, key, query).await {
+    let blocklist = crate::blocklist::load(&state.pool).await.unwrap_or_default();
+    let game = match steamgriddb::search_game_filtered(
+        &state.http.external_strict,
+        key,
+        &term.query,
+        &blocklist,
+    )
+    .await
+    {
         Ok(g) => g,
         Err(e) => {
-            tracing::warn!("SGDB search failed for '{query}': {e}");
+            tracing::warn!("SGDB search failed for '{}': {e}", term.query);
             None
         }
     };
-    state.art_cache.put(query, game.clone());
+    state.art_cache.put(&term.query, game.clone());
     game
 }
 

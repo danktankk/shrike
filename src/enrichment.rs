@@ -101,7 +101,11 @@ struct StoreSearchEnvelope {
 }
 
 #[derive(Deserialize)]
-struct StoreSearchItem { id: u64 }
+struct StoreSearchItem {
+    id: u64,
+    #[serde(default)]
+    name: String,
+}
 
 #[derive(Deserialize)]
 struct AppDetailsWrapper {
@@ -177,19 +181,22 @@ struct RawNewsItem {
 
 // ---- Public API ----
 
-/// Enrich a free-text title via Steam's public APIs. Returns `None` when
-/// Steam has no match or the lookup fails. Consults the cache first
-/// (positive and negative hits, 6h TTL, lowercased-title key).
-pub async fn enrich(
+/// Enrich a free-text title via Steam's public APIs with a blocklist
+/// applied to storesearch hit names. Sequel markers bypass the block —
+/// see `crate::blocklist`. Returns `None` when Steam has no match or the
+/// lookup fails. Consults the cache first (positive and negative hits, 6h
+/// TTL, lowercased-title key).
+pub async fn enrich_filtered(
     client: &Client,
     cache: &EnrichmentCache,
     title: &str,
+    blocklist: &[String],
 ) -> Option<EnrichedGame> {
     let trimmed = title.trim();
     if trimmed.is_empty() { return None; }
     if let Some(cached) = cache.get(trimmed) { return cached; }
 
-    let result = match fetch(client, trimmed).await {
+    let result = match fetch(client, trimmed, blocklist).await {
         Ok(v) => v,
         Err(e) => {
             tracing::warn!("Steam enrichment failed for '{trimmed}': {e}");
@@ -200,10 +207,43 @@ pub async fn enrich(
     result
 }
 
-async fn fetch(client: &Client, title: &str) -> anyhow::Result<Option<EnrichedGame>> {
-    let Some(appid) = search_first_appid(client, title).await? else {
+/// Enrich for a pinned Steam appid, bypassing storesearch entirely. Used
+/// when a search term has a `steam_appid` override. Cached by `appid:N`
+/// key so it doesn't collide with title-keyed entries.
+pub async fn enrich_by_appid(
+    client: &Client,
+    cache: &EnrichmentCache,
+    appid: u64,
+) -> Option<EnrichedGame> {
+    let cache_key = format!("appid:{appid}");
+    if let Some(cached) = cache.get(&cache_key) { return cached; }
+
+    let result = match fetch_for_appid(client, appid).await {
+        Ok(v) => v,
+        Err(e) => {
+            tracing::warn!("Steam enrichment failed for appid {appid}: {e}");
+            None
+        }
+    };
+    cache.put(&cache_key, result.clone());
+    result
+}
+
+async fn fetch(
+    client: &Client,
+    title: &str,
+    blocklist: &[String],
+) -> anyhow::Result<Option<EnrichedGame>> {
+    let Some(appid) = search_first_appid(client, title, blocklist).await? else {
         return Ok(None);
     };
+    fetch_for_appid(client, appid).await
+}
+
+async fn fetch_for_appid(
+    client: &Client,
+    appid: u64,
+) -> anyhow::Result<Option<EnrichedGame>> {
     let Some(d) = fetch_app_details(client, appid).await? else {
         return Ok(None);
     };
@@ -241,14 +281,22 @@ async fn fetch(client: &Client, title: &str) -> anyhow::Result<Option<EnrichedGa
     }))
 }
 
-async fn search_first_appid(client: &Client, title: &str) -> anyhow::Result<Option<u64>> {
+async fn search_first_appid(
+    client: &Client,
+    title: &str,
+    blocklist: &[String],
+) -> anyhow::Result<Option<u64>> {
     let env: StoreSearchEnvelope = client
         .get(STORE_SEARCH)
         .query(&[("term", title), ("l", "en"), ("cc", "US")])
         .send().await?
         .error_for_status()?
         .json().await?;
-    Ok(env.items.into_iter().next().map(|i| i.id))
+    Ok(env
+        .items
+        .into_iter()
+        .find(|i| !crate::blocklist::is_blocked(&i.name, blocklist))
+        .map(|i| i.id))
 }
 
 async fn fetch_app_details(

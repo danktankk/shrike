@@ -390,7 +390,7 @@ mod tests {
         pool
     }
 
-    fn test_notifier() -> Arc<Notifier> {
+    fn test_notifier(pool: SqlitePool) -> Arc<Notifier> {
         // Build a Config directly with all channels disabled. notify() then
         // returns "[]" and never touches the network — critical for hermetic
         // tests that can't depend on DATABASE_URL / webhook env vars.
@@ -404,7 +404,7 @@ mod tests {
             steamgriddb_api_key: None,
             scheduler_tick_secs: 60,
         });
-        Arc::new(Notifier::new(config, reqwest::Client::new()))
+        Arc::new(Notifier::new(config, reqwest::Client::new(), pool))
     }
 
     fn term() -> SearchTerm {
@@ -415,6 +415,8 @@ mod tests {
             enabled: true,
             max_age_days: Some(3650),
             disallowed_keywords: None,
+            steamgriddb_id: None,
+            steam_appid: None,
             created_at: chrono::Utc::now(),
         }
     }
@@ -431,6 +433,7 @@ mod tests {
             last_polled_at: None,
             last_error: None,
             last_success_at: None,
+            categories: None,
         }
     }
 
@@ -440,6 +443,9 @@ mod tests {
             url: Some("http://example.invalid/item".into()),
             guid: guid.into(),
             pub_date: Some(chrono::Utc::now()),
+            description: None,
+            indexer: None,
+            seeders: None,
         }
     }
 
@@ -447,7 +453,7 @@ mod tests {
     #[serial_test::serial]
     async fn process_matches_dedups_across_calls() {
         let pool = test_pool().await;
-        let notifier = test_notifier();
+        let notifier = test_notifier(pool.clone());
         let t = term();
         let s = source();
 
@@ -468,7 +474,7 @@ mod tests {
     #[serial_test::serial]
     async fn process_matches_distinct_guids_both_insert() {
         let pool = test_pool().await;
-        let notifier = test_notifier();
+        let notifier = test_notifier(pool.clone());
         let t = term();
         let s = source();
 

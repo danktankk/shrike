@@ -21,8 +21,10 @@ pub async fn create(
     Json(body): Json<SearchTermPayload>,
 ) -> Result<(StatusCode, Json<SearchTerm>), AppError> {
     let term = sqlx::query_as::<_, SearchTerm>(
-        "INSERT INTO search_terms (name, query, enabled, max_age_days, disallowed_keywords)
-         VALUES (?, ?, ?, ?, ?)
+        "INSERT INTO search_terms
+            (name, query, enabled, max_age_days, disallowed_keywords,
+             steamgriddb_id, steam_appid)
+         VALUES (?, ?, ?, ?, ?, ?, ?)
          RETURNING *",
     )
     .bind(&body.name)
@@ -30,6 +32,8 @@ pub async fn create(
     .bind(body.enabled.unwrap_or(true))
     .bind(body.max_age_days)
     .bind(&body.disallowed_keywords)
+    .bind(body.steamgriddb_id)
+    .bind(body.steam_appid)
     .fetch_one(&state.pool)
     .await?;
     Ok((StatusCode::CREATED, Json(term)))
@@ -43,7 +47,8 @@ pub async fn update(
     let term = sqlx::query_as::<_, SearchTerm>(
         "UPDATE search_terms SET name=?, query=?,
                                  enabled=COALESCE(?, enabled),
-                                 max_age_days=?, disallowed_keywords=?
+                                 max_age_days=?, disallowed_keywords=?,
+                                 steamgriddb_id=?, steam_appid=?
          WHERE id=? RETURNING *",
     )
     .bind(&body.name)
@@ -51,6 +56,8 @@ pub async fn update(
     .bind(body.enabled)
     .bind(body.max_age_days)
     .bind(&body.disallowed_keywords)
+    .bind(body.steamgriddb_id)
+    .bind(body.steam_appid)
     .bind(id)
     .fetch_one(&state.pool)
     .await?;

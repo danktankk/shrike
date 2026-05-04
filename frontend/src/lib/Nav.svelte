@@ -6,6 +6,7 @@
     { href: '#/search-terms',  path: '/search-terms',  label: 'Search Terms',  icon: '◈' },
     { href: '#/sources',       path: '/sources',       label: 'Sources',       icon: '◎' },
     { href: '#/notifications', path: '/notifications', label: 'Notifications', icon: '◆' },
+    { href: '#/blocklist',     path: '/blocklist',     label: 'Blocklist',     icon: '⊘' },
   ]
 </script>
 
