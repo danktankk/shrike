@@ -9,6 +9,15 @@ pub struct SearchTerm {
     pub enabled: bool,
     pub max_age_days: Option<i64>,
     pub disallowed_keywords: Option<String>,
+    /// Optional pinned SteamGridDB game id. When set, art lookups skip
+    /// autocomplete entirely and fetch directly for this id — disambiguates
+    /// year-suffixed sequels (e.g. "PGA Tour 2025" vs "PGA Tour 2026") that
+    /// share a name root and would otherwise collapse onto the same
+    /// first-hit autocomplete result.
+    pub steamgriddb_id: Option<i64>,
+    /// Optional pinned Steam appid. Same purpose as `steamgriddb_id` but
+    /// for the Steam storefront/news enrichment path.
+    pub steam_appid: Option<i64>,
     pub created_at: DateTime<Utc>,
 }
 
@@ -23,6 +32,8 @@ impl SearchTerm {
             enabled: true,
             max_age_days: Some(30),
             disallowed_keywords: None,
+            steamgriddb_id: None,
+            steam_appid: None,
             created_at: chrono::Utc::now(),
         }
     }
@@ -77,6 +88,24 @@ pub struct SearchTermPayload {
     pub enabled: Option<bool>,
     pub max_age_days: Option<i64>,
     pub disallowed_keywords: Option<String>,
+    pub steamgriddb_id: Option<i64>,
+    pub steam_appid: Option<i64>,
+}
+
+/// Row from `sgdb_blocklist`. `pattern` is matched as a case-insensitive
+/// whole-word substring against SGDB and Steam storefront hit names; if it
+/// matches, the hit is suppressed unless a sequel/version marker follows
+/// (digits ≥ 2, roman numerals II+, `v\d+`).
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct BlocklistEntry {
+    pub id: i64,
+    pub pattern: String,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BlocklistPayload {
+    pub pattern: String,
 }
 
 /// Create/update payload for sources (no id/last_polled_at).
@@ -105,6 +134,8 @@ mod tests {
             enabled: true,
             max_age_days: Some(30),
             disallowed_keywords: Some("Trainer, CRACK , repack".into()),
+            steamgriddb_id: None,
+            steam_appid: None,
             created_at: chrono::Utc::now(),
         };
         let list = term.disallowed_list();
@@ -120,6 +151,8 @@ mod tests {
             enabled: true,
             max_age_days: None,
             disallowed_keywords: None,
+            steamgriddb_id: None,
+            steam_appid: None,
             created_at: chrono::Utc::now(),
         };
         assert!(term.disallowed_list().is_empty());

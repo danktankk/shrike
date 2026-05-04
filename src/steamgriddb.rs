@@ -73,18 +73,27 @@ struct SgdbSearchHit {
 }
 
 #[derive(Deserialize)]
+struct SgdbGameDetail {
+    id: u64,
+    name: String,
+}
+
+#[derive(Deserialize)]
 struct SgdbAsset {
     url: String,
 }
 
 // ---- Public API ----
 
-/// Search SGDB for a game by free-text title. Returns `Ok(None)` when no
-/// match is found (NOT an error). HTTP/parse failures return `Err`.
-pub async fn search_game(
+/// Search SGDB and return the first hit whose `name` is NOT suppressed by
+/// any pattern in `blocklist`. Sequel/version markers (digits ≥ 2, roman
+/// numerals II+, `v\d+`) bypass the block — see `crate::blocklist`. When
+/// every returned hit is blocked, this returns `Ok(None)`.
+pub async fn search_game_filtered(
     client: &Client,
     api_key: &str,
     query: &str,
+    blocklist: &[String],
 ) -> anyhow::Result<Option<GameRef>> {
     let url = format!(
         "{}/search/autocomplete/{}",
@@ -100,7 +109,11 @@ pub async fn search_game(
         .json()
         .await?;
 
-    let Some(hit) = resp.data.into_iter().next() else {
+    let Some(hit) = resp
+        .data
+        .into_iter()
+        .find(|h| !crate::blocklist::is_blocked(&h.name, blocklist))
+    else {
         return Ok(None);
     };
 
@@ -109,6 +122,31 @@ pub async fn search_game(
     Ok(Some(GameRef {
         id: hit.id,
         name: hit.name,
+        hero_url,
+        grid_url,
+        logo_url,
+    }))
+}
+
+/// Direct lookup by SGDB game id. Used when a search term has a pinned
+/// `steamgriddb_id` override — autocomplete is bypassed entirely so
+/// year-suffix sequels (PGA Tour 2025 vs 2026) cannot collapse onto each
+/// other. Returns `Ok(None)` when SGDB has no metadata for the id.
+pub async fn fetch_game_by_id(
+    client: &Client,
+    api_key: &str,
+    game_id: u64,
+) -> anyhow::Result<Option<GameRef>> {
+    let url = format!("{}/games/id/{}", SGDB_BASE, game_id);
+    let resp = client.get(&url).bearer_auth(api_key).send().await?;
+    if resp.status() == reqwest::StatusCode::NOT_FOUND {
+        return Ok(None);
+    }
+    let env: SgdbEnvelope<SgdbGameDetail> = resp.error_for_status()?.json().await?;
+    let (hero_url, grid_url, logo_url) = fetch_art_urls(client, api_key, game_id).await?;
+    Ok(Some(GameRef {
+        id: env.data.id,
+        name: env.data.name,
         hero_url,
         grid_url,
         logo_url,
